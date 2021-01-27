@@ -84,7 +84,7 @@ class TrueSkillTracker:
       for p, n in zip(t2players, newt2skills):
         self.skills[p] = n
 
-      self.skill_history.append(self.skills.copy())
+    self.skill_history.append(self.skills.copy())
 
     
 
@@ -117,12 +117,18 @@ if GET_MATCHES:
 else:
   matches = mlc.load('matches3.pkl')
 
+# Users that are not part of CUDGS. Matches will not be considered if they contain any of these users
+user_blacklist = ['1123980', '1640115', '1642207', '1640116', '1640119', '1642471', '1640128']
+
+matches = [m for m in matches if not (set(m['team1table']['id']).intersection(user_blacklist) or set(m['team2table']['id']).intersection(user_blacklist))]
+
 for m in matches:
   m['date'] = dateparser.parse(m['date'])
 
 matches = sorted(matches, key=lambda x: x['date'])
 
 ts = TrueSkillTracker()
+
 
 for match in matches:
   ts.process_match(match)
@@ -139,14 +145,14 @@ class PlayerRankings(Resource):
 
 api.add_resource(PlayerRankings, '/rankings')
 
-# ronan = ([h[Player('Porkypus', '718211')].mu*40 for h in ts.skill_history])
-# ronan_var = np.array([h[Player('Porkypus', '718211')].sigma*40 for h in ts.skill_history])
-# import matplotlib.pyplot as plt
-# plt.plot(ronan)
-# plt.fill_between(np.arange(len(ronan)), ronan-ronan_var, ronan+ronan_var, alpha=0.2)
-# plt.ylim(800, 1300)
-# plt.show()
-# print(ronan)
+ronan = ([h[Player('Porkypus', '1610522')].mu*40 for h in ts.skill_history])
+ronan_var = np.array([h[Player('Porkypus', '1610522')].sigma*40 for h in ts.skill_history])
+import matplotlib.pyplot as plt
+plt.plot(ronan)
+plt.fill_between(np.arange(len(ronan)), ronan-ronan_var, ronan+ronan_var, alpha=0.2)
+plt.ylim(800, 1300)
+plt.show()
+print(ronan)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# if __name__ == '__main__':
+#     app.run(debug=True)
