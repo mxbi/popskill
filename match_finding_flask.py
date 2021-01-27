@@ -36,7 +36,7 @@ class Player:
 
 class TrueSkillTracker:
   def __init__(self, default_rating=25):
-    self.ts = TrueSkill(mu=1000, sigma=8.33*40, beta=4.16*40, tau=0.083*40)
+    self.ts = TrueSkill(mu=1000, sigma=8.33*40/3, beta=4.16*40, tau=0.083*40)
     self.skills = defaultdict(lambda: self.ts.create_rating())
     self.hltv = defaultdict(int)
     self.player_counts = defaultdict(int)
@@ -50,7 +50,7 @@ class TrueSkillTracker:
 
     self.match_ids.append(match['match_id'])
     
-    trace = match['match_id'] == '1147353'
+    trace = match['match_id'] == '1141099'
     if trace:
       print('TRACING MATCH', match['match_id'])
     
@@ -230,12 +230,14 @@ class SubmitMatch(Resource):
 api.add_resource(PlayerRankings, '/rankings')
 api.add_resource(SubmitMatch, '/submit_match')
 
-# ronan = ([h[Player('Porkypus', '1610522')].mu*40 for h in ts.skill_history])
-# ronan_var = np.array([h[Player('Porkypus', '1610522')].sigma*40 for h in ts.skill_history])
+# ronan = ([h[Player('Porkypus', '758084')].mu for h in ts.skill_history])
+# ronan_var = np.array([h[Player('Porkypus', '758084')].sigma for h in ts.skill_history])
+# ronan = np.array([k for k, g in groupby(ronan)])
+# ronan_var = np.array([k for k, g in groupby(ronan_var)])
 # import matplotlib.pyplot as plt
 # plt.plot(ronan)
 # plt.fill_between(np.arange(len(ronan)), ronan-ronan_var, ronan+ronan_var, alpha=0.2)
-# plt.ylim(800, 1300)
+# plt.ylim(800, 2000)
 # plt.show()
 # print(ronan)
 
