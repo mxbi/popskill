@@ -4,16 +4,20 @@ import dateparser
 from collections import defaultdict
 import numpy as np
 from itertools import groupby
+import os
 
 from trueskill import Rating, TrueSkill
 
 from flask import Flask
-from flask_restful import Resource, Api
+from flask_restful import Resource, Api, reqparse
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 api = Api(app)
+
+if not os.path.exists('matches/'):
+  os.mkdir('matches/')
 
 class Player:
   def __init__(self, name, id):
@@ -32,13 +36,20 @@ class Player:
 
 class TrueSkillTracker:
   def __init__(self, default_rating=25):
-    self.ts = TrueSkill()
-    self.skills = defaultdict(lambda: self.ts.create_rating(default_rating))
+    self.ts = TrueSkill(mu=1000, sigma=8.33*40, beta=4.16*40, tau=0.083*40)
+    self.skills = defaultdict(lambda: self.ts.create_rating())
     self.hltv = defaultdict(int)
     self.player_counts = defaultdict(int)
     self.skill_history = [self.skills.copy()]
+    self.match_ids = [] # To avoid repeating matches
 
   def process_match(self, match):
+    if match['match_id'] in self.match_ids:
+      print('Warning: tried to process the same match twice')
+      return
+
+    self.match_ids.append(match['match_id'])
+    
     t1table = match['team1table']
     t2table = match['team2table']
     t1players = [Player(p['Name'], p['id']) for _, p in t1table.iterrows()]
@@ -53,8 +64,8 @@ class TrueSkillTracker:
         print(match)
       self.player_counts[p] += 1
 
-    t1weights = np.array([p['HLTV'] for _, p in t1table.iterrows()])
-    t2weights = np.array([p['HLTV'] for _, p in t2table.iterrows()])
+    t1weights = np.array([p['HLTV'] for _, p in t1table.iterrows()])**1
+    t2weights = np.array([p['HLTV'] for _, p in t2table.iterrows()])**1
 
     rounds = [1]*match['team1score'] + [2]*match['team2score']
     np.random.seed(42)
@@ -68,7 +79,7 @@ class TrueSkillTracker:
       t2skills = [self.skills[p] for p in t2players]
 
       # Popflash games can't be drawn
-      ranks = [1, 0] if r==2 else [0, 1]
+      ranks = [1, 0] if r==2 else [0, 1] 
 
       if r==1:
         t2weights = 1/t2weights
@@ -123,6 +134,16 @@ user_blacklist = ['1123980', '1640115', '1642207', '1640116', '1640119', '164247
 
 matches = [m for m in matches if not (set(m['team1table']['id']).intersection(user_blacklist) or set(m['team2table']['id']).intersection(user_blacklist))]
 
+# Add matches submitted by users
+for match_id in [x for x in open('submitted_matches.txt').read().split('\n') if x]:
+  try:
+    match = mlc.load('matches/{}.pkl'.format(match_id))
+  except:
+    match = pf.get_match(match_id)
+    mlc.save(match, 'matches/{}.pkl'.format(match_id))
+
+  matches.append(match)
+
 for m in matches:
   m['date'] = dateparser.parse(m['date'])
 
@@ -135,25 +156,48 @@ for match in matches:
   ts.process_match(match)
 
 for x in sorted(ts.skills.items(), key=lambda x: x[1].mu, reverse=True):
-  if x[1].sigma < 10 and ts.player_counts[x[0]] >= 5:
+  if x[1].sigma < 1000 and ts.player_counts[x[0]] >= 3:
     print(x, ts.player_counts[x[0]])
 
 class PlayerRankings(Resource):
   def get(self):
     ret = []
     for user, skill in ts.skills.items():
-      user_skill_history = [h[user].mu*40 for h in ts.skill_history]
+      user_skill_history = [h[user].mu for h in ts.skill_history]
       user_skill_history = [k for k,g in groupby(user_skill_history)]
       user_last_diff = user_skill_history[-1] - user_skill_history[-2]
-      ret.append({'username': user.name, 'SR': int(skill.mu*40), 'SRvar': int(skill.sigma*40), 'matches_played': ts.player_counts[user], 'user_id': user.id, 'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history})
+      ret.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts.player_counts[user], 'user_id': user.id, 'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history})
     return ret
 
 
     # return [ for user, skill in ts.skills.items()]
 
+parser = reqparse.RequestParser()
+parser.add_argument('match_url')
+
+class SubmitMatch(Resource):
+  def post(self):
+    args = parser.parse_args()
+    match_id = args['match_url'].split('/')[-1]
+    if not match_id.isnumeric():
+      return "Bad popflash match url provided", 400
+
+    if match_id in ts.match_ids:
+      return "Match already processed", 400
+
+    match_url = 'https://popflash.site/match/' + match_id
+
+    match = pf.get_match(match_url)
+    
+    open('submitted_matches.txt', 'a').write(match_id + '\n')
+    mlc.save(match, 'matches/{}.pkl'.format(match_id))
+
+    # Will do nothing if match has already been processed
+    ts.process_match(match)
 
 
 api.add_resource(PlayerRankings, '/rankings')
+api.add_resource(SubmitMatch, '/submit_match')
 
 # ronan = ([h[Player('Porkypus', '1610522')].mu*40 for h in ts.skill_history])
 # ronan_var = np.array([h[Player('Porkypus', '1610522')].sigma*40 for h in ts.skill_history])
