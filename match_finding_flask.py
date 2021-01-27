@@ -145,14 +145,14 @@ class PlayerRankings(Resource):
 
 api.add_resource(PlayerRankings, '/rankings')
 
-ronan = ([h[Player('Porkypus', '1610522')].mu*40 for h in ts.skill_history])
-ronan_var = np.array([h[Player('Porkypus', '1610522')].sigma*40 for h in ts.skill_history])
-import matplotlib.pyplot as plt
-plt.plot(ronan)
-plt.fill_between(np.arange(len(ronan)), ronan-ronan_var, ronan+ronan_var, alpha=0.2)
-plt.ylim(800, 1300)
-plt.show()
-print(ronan)
+# ronan = ([h[Player('Porkypus', '1610522')].mu*40 for h in ts.skill_history])
+# ronan_var = np.array([h[Player('Porkypus', '1610522')].sigma*40 for h in ts.skill_history])
+# import matplotlib.pyplot as plt
+# plt.plot(ronan)
+# plt.fill_between(np.arange(len(ronan)), ronan-ronan_var, ronan+ronan_var, alpha=0.2)
+# plt.ylim(800, 1300)
+# plt.show()
+# print(ronan)
 
-# if __name__ == '__main__':
-#     app.run(debug=True)
+if __name__ == '__main__':
+    app.run(debug=True)
