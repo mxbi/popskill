@@ -36,7 +36,7 @@ class Player:
 
 class TrueSkillTracker:
   def __init__(self, default_rating=25):
-    self.ts = TrueSkill(mu=1000, sigma=8.33*40, beta=4.16*40, tau=0.083*40/10)
+    self.ts = TrueSkill(mu=1000, sigma=8.33*40, beta=4.16*40, tau=0.083*40)
     self.skills = defaultdict(lambda: self.ts.create_rating())
     self.hltv = defaultdict(int)
     self.player_counts = defaultdict(int)
@@ -50,10 +50,21 @@ class TrueSkillTracker:
 
     self.match_ids.append(match['match_id'])
     
+    trace = match['match_id'] == '1147353'
+    if trace:
+      print('TRACING MATCH', match['match_id'])
+    
     t1table = match['team1table']
     t2table = match['team2table']
     t1players = [Player(p['Name'], p['id']) for _, p in t1table.iterrows()]
     t2players = [Player(p['Name'], p['id']) for _, p in t2table.iterrows()]
+
+    if trace:
+      print('* before match:')
+      trace_skill1 = {p: int(self.skills[p].mu) for p in t1players}
+      trace_skill2 = {p: int(self.skills[p].mu) for p in t2players}
+      print('team1:', trace_skill1)
+      print('team2:', trace_skill2)
 
     for p in t1players:
       if p.id == '1666369':
@@ -64,19 +75,24 @@ class TrueSkillTracker:
         print(match)
       self.player_counts[p] += 1
 
-    t1weights = np.array([p['HLTV'] for _, p in t1table.iterrows()])**1
-    t2weights = np.array([p['HLTV'] for _, p in t2table.iterrows()])**1
-
     rounds = [1]*match['team1score'] + [2]*match['team2score']
     np.random.seed(42)
     rounds = np.random.permutation(rounds)
 
+    if trace:
+      print('Generated round sequence:', rounds)
+
     # print(t1weights.sum(), t2weights.sum())
     
-    for r in rounds:
+    for i, r in enumerate(rounds):
+      if trace:
+        print('* round', i, 'winner team', r)
 
       t1skills = [self.skills[p] for p in t1players]
       t2skills = [self.skills[p] for p in t2players]
+
+      t1weights = np.array([p['HLTV'] for _, p in t1table.iterrows()])**1
+      t2weights = np.array([p['HLTV'] for _, p in t2table.iterrows()])**1
 
       # Popflash games can't be drawn
       ranks = [1, 0] if r==2 else [0, 1] 
@@ -90,13 +106,28 @@ class TrueSkillTracker:
       t2weights /= (t2weights.sum() / 5)
       # print(t1weights.sum(), t2weights.sum())
 
+      if trace:
+        print('weights:', np.around(t1weights, 1), np.around(t2weights, 1))
+
       newt1skills, newt2skills = self.ts.rate([t1skills, t2skills], ranks, weights=[t1weights, t2weights])
+
+      if trace:
+        print('team1:', {p: round(newt1skills[i].mu - self.skills[p].mu, 2) for i, p in enumerate(t1players)})
+        print('team2:', {p: round(newt2skills[i].mu - self.skills[p].mu, 2) for i, p in enumerate(t2players)})
+
       for p, n in zip(t1players, newt1skills):
         self.skills[p] = n
       for p, n in zip(t2players, newt2skills):
         self.skills[p] = n
 
     self.skill_history.append(self.skills.copy())
+
+    if trace:
+      print('* OVERALL CHANGE:')
+      print('team1:', {p: round(self.skills[p].mu - self.skill_history[-2][p].mu, 2) for i, p in enumerate(t1players)})
+      print('team2:', {p: round(self.skills[p].mu - self.skill_history[-2][p].mu, 2) for i, p in enumerate(t2players)})
+
+
 
     
 
