@@ -35,6 +35,7 @@ class TrueSkillTracker:
     self.skills = defaultdict(lambda: self.ts.create_rating(default_rating))
     self.hltv = defaultdict(int)
     self.player_counts = defaultdict(int)
+    self.skill_history = [self.skills.copy()]
 
   def process_match(self, match):
     t1table = match['team1table']
@@ -83,10 +84,12 @@ class TrueSkillTracker:
       for p, n in zip(t2players, newt2skills):
         self.skills[p] = n
 
+      self.skill_history.append(self.skills.copy())
+
     
 
 
-GET_MATCHES = 1
+GET_MATCHES = 0
 
 if GET_MATCHES:
   matches = '1146703,1146629,1142428,1142326,1135008,1134907,1094886,1094757,1092480,1088135,1088067,1087975,1142520,1142428,1142326,1133930,1131132,1128002,1125764,1123980,1123292,1123133,1120870,1118333,1109606,1101715,1101607,1094886,1094757,1094696,1092480,1092336,1147353,1147236,1147113,1146703,1146629,1146522,1146408,1144625,1144458,1143208,1143041,1142520,1142428,1142326,1142244,1141099,1140989,1140501,1135008,1134907,1147353,1147236,1147113,1146703,1146629,1146522,1146408,1145704,1145612,1144316,1142244,1141745,1141659,1140989,1140501,1135008,1109606,1101715,1101607,1094886'.split(',')
@@ -130,11 +133,20 @@ for x in sorted(ts.skills.items(), key=lambda x: x[1].mu, reverse=True):
 
 class PlayerRankings(Resource):
   def get(self):
-    return [{'username': user.name, 'SR': int(skill.mu*40), 'SRvar': int(skill.sigma*40), 'matches_played': ts.player_counts[user]} for user, skill in ts.skills.items()]
+    return [{'username': user.name, 'SR': int(skill.mu*40), 'SRvar': int(skill.sigma*40), 'matches_played': ts.player_counts[user], 'user_id': user.id} for user, skill in ts.skills.items()]
 
 
 
 api.add_resource(PlayerRankings, '/rankings')
+
+# ronan = ([h[Player('Porkypus', '718211')].mu*40 for h in ts.skill_history])
+# ronan_var = np.array([h[Player('Porkypus', '718211')].sigma*40 for h in ts.skill_history])
+# import matplotlib.pyplot as plt
+# plt.plot(ronan)
+# plt.fill_between(np.arange(len(ronan)), ronan-ronan_var, ronan+ronan_var, alpha=0.2)
+# plt.ylim(800, 1300)
+# plt.show()
+# print(ronan)
 
 if __name__ == '__main__':
     app.run(debug=True)
