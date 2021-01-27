@@ -3,6 +3,7 @@ import mlcrate as mlc
 import dateparser
 from collections import defaultdict
 import numpy as np
+from itertools import groupby
 
 from trueskill import Rating, TrueSkill
 
@@ -139,7 +140,16 @@ for x in sorted(ts.skills.items(), key=lambda x: x[1].mu, reverse=True):
 
 class PlayerRankings(Resource):
   def get(self):
-    return [{'username': user.name, 'SR': int(skill.mu*40), 'SRvar': int(skill.sigma*40), 'matches_played': ts.player_counts[user], 'user_id': user.id} for user, skill in ts.skills.items()]
+    ret = []
+    for user, skill in ts.skills.items():
+      user_skill_history = [h[user].mu*40 for h in ts.skill_history]
+      user_skill_history = [k for k,g in groupby(user_skill_history)]
+      user_last_diff = user_skill_history[-1] - user_skill_history[-2]
+      ret.append({'username': user.name, 'SR': int(skill.mu*40), 'SRvar': int(skill.sigma*40), 'matches_played': ts.player_counts[user], 'user_id': user.id, 'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history})
+    return ret
+
+
+    # return [ for user, skill in ts.skills.items()]
 
 
 
