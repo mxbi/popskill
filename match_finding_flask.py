@@ -8,8 +8,10 @@ from trueskill import Rating, TrueSkill
 
 from flask import Flask
 from flask_restful import Resource, Api
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 api = Api(app)
 
 class Player:
@@ -87,7 +89,7 @@ class TrueSkillTracker:
 GET_MATCHES = 0
 
 if GET_MATCHES:
-  matches = '1146703,1146629,1142428,1142326,1135008,1134907,1094886,1094757,1092480,1088135,1088067,1087975,1142520,1142428,1142326,1133930,1131132,1128002,1125764,1123980,1123292,1123133,1120870,1118333,1109606,1101715,1101607,1094886,1094757,1094696,1092480,1092336'.split(',')
+  matches = '1146703,1146629,1142428,1142326,1135008,1134907,1094886,1094757,1092480,1088135,1088067,1087975,1142520,1142428,1142326,1133930,1131132,1128002,1125764,1123980,1123292,1123133,1120870,1118333,1109606,1101715,1101607,1094886,1094757,1094696,1092480,1092336,1147353,1147236,1147113,1146703,1146629,1146522,1146408,1144625,1144458,1143208,1143041,1142520,1142428,1142326,1142244,1141099,1140989,1140501,1135008,1134907'.split(',')
 
   user_urls = [x for x in open('popflash_ids.txt').read().split('\n') if x]
 
@@ -123,7 +125,7 @@ for match in matches:
   ts.process_match(match)
 
 for x in sorted(ts.skills.items(), key=lambda x: x[1].mu, reverse=True):
-  if x[1].sigma < 10 and ts.player_counts[x[0]] >= 3:
+  if x[1].sigma < 10 and ts.player_counts[x[0]] >= 5:
     print(x, ts.player_counts[x[0]])
 
 class PlayerRankings(Resource):
