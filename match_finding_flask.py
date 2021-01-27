@@ -36,7 +36,7 @@ class Player:
 
 class TrueSkillTracker:
   def __init__(self, default_rating=25):
-    self.ts = TrueSkill(mu=1000, sigma=8.33*40/3, beta=4.16*40, tau=0.083*40)
+    self.ts = TrueSkill(mu=1000, sigma=8.33*40/5, beta=4.16*40, tau=0.083*40)
     self.skills = defaultdict(lambda: self.ts.create_rating())
     self.hltv = defaultdict(int)
     self.player_counts = defaultdict(int)
