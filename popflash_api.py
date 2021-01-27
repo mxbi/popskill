@@ -29,7 +29,10 @@ def get_profile(url):
 def get_match(url):
   if url.startswith('/match'):
     url = 'https://popflash.site' + url
+  if url.isnumeric():
+    url = 'https://popflash.site/match/' + url
   
+  print(url)
   page = requests.get(url)
   soup = BeautifulSoup(page.text, 'html.parser')
 
