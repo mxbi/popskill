@@ -102,6 +102,9 @@ class TrueSkillTracker:
       else:
         t1weights = 1/t1weights
 
+      t1weights **= 0.75
+      t2weights **= 0.75
+
       t1weights /= (t1weights.sum() / 5)
       t2weights /= (t2weights.sum() / 5)
       # print(t1weights.sum(), t2weights.sum())
