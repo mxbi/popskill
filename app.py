@@ -198,15 +198,14 @@ class PlayerRankings(Resource):
   def get(self):
     ret = []
     for user, skill in ts.skills.items():
-      user_skill_history = [h[user].mu for h in ts.skill_history]
-      user_skill_history = [k for k,g in groupby(user_skill_history)]
-      user_last_diff = user_skill_history[-1] - user_skill_history[-2]
+      user_skill_history = [{'SR': h[user].mu, 'date': '' if i==0 else matches[i-1]['date'].isoformat(), 'match_id': 0 if i==0 else matches[i-1]['match_id']} for i,h in enumerate(ts.skill_history)]
+      user_skill_history = [list(g)[0] for k,g in groupby(user_skill_history, lambda x: x['SR'])]
+      user_last_diff = user_skill_history[-1]['SR'] - user_skill_history[-2]['SR']
       ret.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts.player_counts[user], 'user_id': user.id, 'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history})
     return ret
 
 
     # return [ for user, skill in ts.skills.items()]
-
 parser = reqparse.RequestParser()
 parser.add_argument('match_url')
 
