@@ -2,6 +2,9 @@ import discord
 import requests
 import json
 import sys
+import io
+
+import popflash_match_screenshot as pms
 
 if len(sys.argv) >1 and sys.argv[1] == 'testing':
   print('Running in testing mode')
@@ -20,7 +23,18 @@ async def on_message(message):
   if message.author == client.user:
     return
 
+  if message.content.startswith('!match'):
+    print(message)
+    match_id = message.content.split(' ')[1].split('/')[-1]
+    print('taking')
+    img = pms.screenshot(match_id)
+    print('screenshot')
+    img = discord.File(io.BytesIO(img), 'match_id.png')
+    print('sending')
+    await message.channel.send(file=img)
+
   if message.content.startswith('!register'):
+    print(message)
     match_url = message.content.split(' ')[1]
 
     resp = requests.post(SERVER + '/submit_match', data=json.dumps({'match_url': match_url}), headers={"Content-Type": "application/json"})
