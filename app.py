@@ -178,9 +178,6 @@ for match_id in [x for x in open('submitted_matches.txt').read().split('\n') if 
 
   matches.append(match)
 
-for m in matches:
-  m['date'] = dateparser.parse(m['date'])
-
 matches = sorted(matches, key=lambda x: x['date'])
 
 
@@ -204,8 +201,6 @@ class PlayerRankings(Resource):
       ret.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts.player_counts[user], 'user_id': user.id, 'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history})
     return ret
 
-
-    # return [ for user, skill in ts.skills.items()]
 parser = reqparse.RequestParser()
 parser.add_argument('match_url')
 
@@ -222,6 +217,7 @@ class SubmitMatch(Resource):
     match_url = 'https://popflash.site/match/' + match_id
 
     match = pf.get_match(match_url)
+    matches.append(match)
     
     open('submitted_matches.txt', 'a').write(match_id + '\n')
     mlc.save(match, 'matches/{}.pkl'.format(match_id))

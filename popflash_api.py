@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import dateparser
 
 def _strip_links_from_table(table):
   links = []
@@ -56,6 +57,7 @@ def get_match(url):
   response['team2table'] = df2
   
   response['date'] = soup.select('#match-container > h2 > span')[0]['data-date']
+  response['date'] = dateparser.parse(response['date'])
   response['match_id'] = url.split('/')[-1]
 
   response['map_image'] = soup.select('#match-container > div:nth-child(2) > div:nth-child(2) > img')[0]['src']
