@@ -3,11 +3,11 @@ import requests
 import json
 import sys
 
-if sys.argv[1] == 'testing':
+if len(sys.argv) >1 and sys.argv[1] == 'testing':
   print('Running in testing mode')
   SERVER = "http://localhost:7355"
 else:
-  SERVER = "https://localhost:7355"
+  SERVER = "https://vm.mxbi.net:7355"
 
 client = discord.Client()
 
@@ -26,7 +26,7 @@ async def on_message(message):
     resp = requests.post(SERVER + '/submit_match', data=json.dumps({'match_url': match_url}), headers={"Content-Type": "application/json"})
     if resp.status_code != 200:
       print(resp, resp.text)
-      await message.channel.send('Failed')
+      await message.channel.send('Failed:' + resp.text[:1000])
       return
     else:
       resp = resp.json()
