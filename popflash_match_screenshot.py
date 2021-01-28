@@ -11,21 +11,21 @@ class PopflashScreenshotter:
     print('Started selenium.')
 
 
-    def screenshot(match_id):
-      match_url = ("https://popflash.site/match/" + str(match_id))
-      
+  def screenshot(self, match_id):
+    match_url = ("https://popflash.site/match/" + str(match_id))
+    
 
-      print('opened webdriver')
+    print('opened webdriver')
 
-      self.browser.get(match_url)
-      sleep(0.5)
-      self.browser.add_cookie({"name": "connect.sid", "value": self.login_cookie})
-      self.browser.refresh()
-      self.browser.set_window_size(1100, 1500)
-      page_container = self.browser.find_element_by_xpath('//*[@id="page-container"]')
-      img = page_container.screenshot_as_png
+    self.browser.get(match_url)
+    sleep(0.5)
+    self.browser.add_cookie({"name": "connect.sid", "value": self.login_cookie})
+    self.browser.refresh()
+    self.browser.set_window_size(1100, 1500)
+    page_container = self.browser.find_element_by_xpath('//*[@id="page-container"]')
+    img = page_container.screenshot_as_png
 
-      return img
+    return img
 
 if __name__ == "__main__":
   print(PopflashScreenshotter().screenshot("1148142"))
