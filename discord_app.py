@@ -4,7 +4,7 @@ import json
 import sys
 import io
 
-import popflash_match_screenshot as pms
+import popflash_match_screenshot
 
 if len(sys.argv) >1 and sys.argv[1] == 'testing':
   print('Running in testing mode')
@@ -13,6 +13,7 @@ else:
   SERVER = "https://vm.mxbi.net:7355"
 
 client = discord.Client()
+pms = popflash_match_screenshot.PopflashScreenshotter()
 
 @client.event
 async def on_ready():
@@ -23,14 +24,11 @@ async def on_message(message):
   if message.author == client.user:
     return
 
-  if message.content.startswith('!match'):
+  if message.content.startswith('!stats'):
     print(message)
     match_id = message.content.split(' ')[1].split('/')[-1]
-    print('taking')
     img = pms.screenshot(match_id)
-    print('screenshot')
     img = discord.File(io.BytesIO(img), 'match_id.png')
-    print('sending')
     await message.channel.send(file=img)
 
   if message.content.startswith('!register'):
