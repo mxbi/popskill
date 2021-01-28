@@ -58,6 +58,8 @@ def get_match(url):
   response['date'] = soup.select('#match-container > h2 > span')[0]['data-date']
   response['match_id'] = url.split('/')[-1]
 
+  response['map_image'] = soup.select('#match-container > div:nth-child(2) > div:nth-child(2) > img')[0]['src']
+
   return response
 
 

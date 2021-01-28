@@ -5,6 +5,9 @@ from collections import defaultdict
 import numpy as np
 from itertools import groupby
 import os
+import discord
+import asyncio
+from threading import Thread
 
 from trueskill import Rating, TrueSkill
 
@@ -50,7 +53,7 @@ class TrueSkillTracker:
 
     self.match_ids.append(match['match_id'])
     
-    trace = match['match_id'] == '1141099'
+    trace = False #match['match_id'] == '1141099'
     if trace:
       print('TRACING MATCH', match['match_id'])
     
@@ -155,9 +158,6 @@ if GET_MATCHES:
   matches = set(matches)
   print(len(matches))
 
-  # for m in matches:
-    # print(m)
-    # pf.get_match('/match/' + m)
   matches = [pf.get_match(m) for m in matches]
   mlc.save(matches, 'matches3.pkl')
 else:
@@ -183,15 +183,16 @@ for m in matches:
 
 matches = sorted(matches, key=lambda x: x['date'])
 
-ts = TrueSkillTracker()
 
+
+ts = TrueSkillTracker()
 
 for match in matches:
   ts.process_match(match)
 
-for x in sorted(ts.skills.items(), key=lambda x: x[1].mu, reverse=True):
-  if x[1].sigma < 1000 and ts.player_counts[x[0]] >= 3:
-    print(x, ts.player_counts[x[0]])
+# for x in sorted(ts.skills.items(), key=lambda x: x[1].mu, reverse=True):
+#   if x[1].sigma < 1000 and ts.player_counts[x[0]] >= 3:
+#     print(x, ts.player_counts[x[0]])
 
 class PlayerRankings(Resource):
   def get(self):
@@ -226,12 +227,43 @@ class SubmitMatch(Resource):
     open('submitted_matches.txt', 'a').write(match_id + '\n')
     mlc.save(match, 'matches/{}.pkl'.format(match_id))
 
+    skills_before = ts.skills.copy()
+
     # Will do nothing if match has already been processed
     ts.process_match(match)
 
+    # Response stuff for discord
+    resp = {}
+    resp['team1status'] = '{} - {}'.format('W' if match['team1score'] > match['team2score'] else 'L', match['team1score'])
+    resp['team2status'] = '{} - {}'.format('W' if match['team2score'] > match['team1score'] else 'L', match['team2score'])
+
+    t1stats = []
+    for _, row in match['team1table'].iterrows():
+      player = Player(row['Name'], row['id'])
+      oldskill = skills_before[player].mu
+      newskill = ts.skills[player].mu
+      diff = newskill - oldskill
+      t1stats.append('{} - {} **({}{})**'.format(player.name, int(newskill), '+' if diff>0 else '', int(diff)))
+
+    t2stats = []
+    for _, row in match['team2table'].iterrows():
+      player = Player(row['Name'], row['id'])
+      oldskill = skills_before[player].mu
+      newskill = ts.skills[player].mu
+      diff = newskill - oldskill
+      t2stats.append('{} - {} **({}{})**'.format(player.name, int(newskill), '+' if diff>0 else '', int(diff)))
+
+    resp['team1stats'] = '\n'.join(t1stats)
+    resp['team2stats'] = '\n'.join(t2stats)
+
+    resp['time'] = match['date']
+    resp['image'] = match['map_image']
+
+    return resp, 200
 
 api.add_resource(PlayerRankings, '/rankings')
 api.add_resource(SubmitMatch, '/submit_match')
+
 
 # ronan = ([h[Player('Porkypus', '758084')].mu for h in ts.skill_history])
 # ronan_var = np.array([h[Player('Porkypus', '758084')].sigma for h in ts.skill_history])
@@ -245,4 +277,5 @@ api.add_resource(SubmitMatch, '/submit_match')
 # print(ronan)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=7355)
+    
