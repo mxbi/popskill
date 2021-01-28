@@ -24,22 +24,14 @@ async def on_message(message):
   if message.author == client.user:
     return
 
-  if message.content.startswith('!stats'):
-    print(message)
-    match_id = message.content.split(' ')[1].split('/')[-1]
-    pms = popflash_match_screenshot.PopflashScreenshotter()
-    img = pms.screenshot(match_id)
-    img = discord.File(io.BytesIO(img), 'match_id.png')
-    await message.channel.send(file=img)
-
-  if message.content.startswith('!register'):
+  if message.content.startswith('!register') or message.content.startswith('!pop'):
     print(message)
     match_url = message.content.split(' ')[1]
 
     resp = requests.post(SERVER + '/submit_match', data=json.dumps({'match_url': match_url}), headers={"Content-Type": "application/json"})
     if resp.status_code != 200:
       print(resp, resp.text)
-      await message.channel.send('Failed:' + resp.text[:1000])
+      await message.channel.send('Failed to process match:' + resp.text[:1000])
       return
     else:
       resp = resp.json()
@@ -49,6 +41,15 @@ async def on_message(message):
     embed.add_field(name=resp['team1status'], value=resp['team1stats'], inline=True)
     embed.add_field(name=resp['team2status'], value=resp['team2stats'], inline=True)
     await message.channel.send(embed=embed)
+
+  if message.content.startswith('!stats') or message.content.startswith('!pop'):
+    print(message)
+    match_id = message.content.split(' ')[1].split('/')[-1]
+    async with message.channel.typing():
+      pms = popflash_match_screenshot.PopflashScreenshotter()
+      img = pms.screenshot(match_id)
+      img = discord.File(io.BytesIO(img), 'match_id.png')
+      await message.channel.send(file=img)
 
 client.run('ODA0MzMzMDYyMDk5OTU5ODA4.YBKziQ.X7MMTHR8zXZ85r4GLm-zVXK7ZBM')
 print('Hello')
