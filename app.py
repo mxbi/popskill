@@ -178,13 +178,12 @@ for match_id in [x for x in open('submitted_matches.txt').read().split('\n') if 
 
   matches.append(match)
 
-matches = sorted(matches, key=lambda x: x['date'])
-
 # Bring forward old dates from before the format was updated
 for m in matches:
   if isinstance(m['date'], str):
     m['date'] = dateparser.parse(m['date'])
 
+matches = sorted(matches, key=lambda x: x['date'])
 
 ts = TrueSkillTracker()
 

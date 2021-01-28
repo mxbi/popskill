@@ -13,7 +13,7 @@ else:
   SERVER = "https://vm.mxbi.net:7355"
 
 client = discord.Client()
-pms = popflash_match_screenshot.PopflashScreenshotter()
+#pms = popflash_match_screenshot.PopflashScreenshotter()
 
 @client.event
 async def on_ready():
@@ -27,6 +27,7 @@ async def on_message(message):
   if message.content.startswith('!stats'):
     print(message)
     match_id = message.content.split(' ')[1].split('/')[-1]
+    pms = popflash_match_screenshot.PopflashScreenshotter()
     img = pms.screenshot(match_id)
     img = discord.File(io.BytesIO(img), 'match_id.png')
     await message.channel.send(file=img)
