@@ -254,7 +254,7 @@ class SubmitMatch(Resource):
     resp['team1stats'] = '\n'.join(t1stats)
     resp['team2stats'] = '\n'.join(t2stats)
 
-    resp['time'] = match['date']
+    resp['time'] = match['date'].isotime()
     resp['image'] = match['map_image']
 
     return resp, 200
