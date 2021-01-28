@@ -36,6 +36,8 @@ def get_match(url):
   page = requests.get(url)
   soup = BeautifulSoup(page.text, 'html.parser')
 
+  assert "Match is final" in page.text, "Tried adding non-final match"
+
   response = {}
   response['team1score'] = int(soup.select('#match-container > div:nth-child(2) > div:nth-child(1) > div > div.score.score-1')[0].text.strip())
   response['team2score'] = int(soup.select('#match-container > div:nth-child(2) > div:nth-child(1) > div > div.score.score-2')[0].text.strip())
