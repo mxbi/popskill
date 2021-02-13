@@ -40,14 +40,22 @@ class Player:
 from scipy.stats import logistic
 
 class TrueSkillTracker:
-  def __init__(self, default_rating=25):
-    self.ts = TrueSkill(mu=1000, sigma=8.33*40/2, beta=4.16*40, tau=0.083*40, draw_probability=0) #, backend=(logistic.cdf, logistic.pdf, logistic.ppf))
+  def __init__(self, mu=1000, sigma=8.33*40/2, beta=4.16*40, tau=0.083*40, mode='match', min_ranked_matches=6):
+    self.min_ranked_matches = min_ranked_matches
+    assert mode in ['round', 'match']
+    self.mode = mode
+    self.ts = TrueSkill(mu=mu, sigma=sigma, beta=beta, tau=tau, draw_probability=0) #, backend=(logistic.cdf, logistic.pdf, logistic.ppf))
+    
     self.skills = defaultdict(lambda: self.ts.create_rating())
     self.hltv = defaultdict(int)
     self.player_counts = defaultdict(int)
     self.skill_history = [self.skills.copy()]
     self.match_ids = [] # To avoid repeating matches
     self.hltv = 0.75
+
+    self.player_rounds_played = defaultdict(int)
+    self.player_rounds_won = defaultdict(int)
+    self.player_hltv_history = defaultdict(list)
     #print(f'RATING mu={mu} sigma={sigma} beta={beta}, tau={tau}, hltv={hltv}, mode=GAME')
 
   def process_match(self, match):
@@ -74,26 +82,28 @@ class TrueSkillTracker:
       print('team2:', trace_skill2)
 
     for p in t1players:
-      if p.id == '1666369':
-        print(match)
       self.player_counts[p] += 1
+      self.player_rounds_played[p] += match['team1score'] + match['team2score']
+      self.player_rounds_won[p] += match['team1score']
     for p in t2players:
-      if p.id == '1666369':
-        print(match)
       self.player_counts[p] += 1
+      self.player_rounds_played[p] += match['team1score'] + match['team2score']
+      self.player_rounds_won[p] += match['team2score']
 
-#    rounds = [1]*match['team1score'] + [2]*match['team2score']
-    round_diff = match['team1score'] - match['team2score']
-#    rounds = [1]*round_diff if round_diff > 0 else [2]*(-round_diff)
-    rounds = [1] if round_diff > 0 else [2]
+    if self.mode == 'match':
+      round_diff = match['team1score'] - match['team2score']
+      rounds = [1] if round_diff > 0 else [2]
+    elif self.mode == 'round':
+      rounds = [1]*match['team1score'] + [2]*match['team2score']
+    elif self.mode == 'round_diff':
+      round_diff = match['team1score'] - match['team2score']
+      rounds = [1]*round_diff if round_diff > 0 else [2]*(-round_diff)
 
     np.random.seed(42)
     rounds = np.random.permutation(rounds)
 
     if trace:
       print('Generated round sequence:', rounds)
-
-    # print(t1weights.sum(), t2weights.sum())
     
     for i, r in enumerate(rounds):
       if trace:
@@ -102,8 +112,14 @@ class TrueSkillTracker:
       t1skills = [self.skills[p] for p in t1players]
       t2skills = [self.skills[p] for p in t2players]
 
-      t1weights = np.array([p['HLTV'] for _, p in t1table.iterrows()])**1
-      t2weights = np.array([p['HLTV'] for _, p in t2table.iterrows()])**1
+      t1weights = np.array([p['HLTV'] for _, p in t1table.iterrows()])
+      t2weights = np.array([p['HLTV'] for _, p in t2table.iterrows()])
+
+      # Keep track of HLTVs
+      for (p, hltv) in zip(t1players + t2players, t1weights.tolist() + t2weights.tolist()):
+        self.player_hltv_history[p].append(hltv)
+      
+      #### Calculating ratings (weighted by HLTV)
 
       # Popflash games can't be drawn
       ranks = [1, 0] if r==2 else [0, 1] 
@@ -118,7 +134,6 @@ class TrueSkillTracker:
 
       t1weights /= (t1weights.sum() / 5)
       t2weights /= (t2weights.sum() / 5)
-      # print(t1weights.sum(), t2weights.sum())
 
       if trace:
         print('weights:', np.around(t1weights, 1), np.around(t2weights, 1))
@@ -200,19 +215,26 @@ print('Loaded', len(matches), 'Matches')
 for match in matches:
   ts.process_match(match)
 
-# for x in sorted(ts.skills.items(), key=lambda x: x[1].mu, reverse=True):
-#   if x[1].sigma < 1000 and ts.player_counts[x[0]] >= 3:
-#     print(x, ts.player_counts[x[0]])
+################ WEB API
 
 class PlayerRankings(Resource):
   def get(self):
     ret = []
+
     for user, skill in ts.skills.items():
-      if ts.player_counts[user] < 6: continue
+      if ts.player_counts[user] < ts.min_ranked_matches: 
+        continue
+
       user_skill_history = [{'SR': h[user].mu, 'date': '' if i==0 else matches[i-1]['date'].isoformat(), 'match_id': 0 if i==0 else matches[i-1]['match_id']} for i,h in enumerate(ts.skill_history)]
       user_skill_history = [list(g)[0] for k,g in groupby(user_skill_history, lambda x: x['SR'])]
+
       user_last_diff = user_skill_history[-1]['SR'] - user_skill_history[-2]['SR']
-      ret.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts.player_counts[user], 'user_id': user.id, 'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history})
+      
+      user_rwp = (ts.player_rounds_won[user] / ts.player_rounds_played[user])
+      user_hltv = np.mean(ts.player_hltv_history[user])
+
+      ret.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts.player_counts[user], 'user_id': user.id, 
+                  'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history, 'rwp': user_rwp, 'hltv': user_hltv})
     return ret
 
 parser = reqparse.RequestParser()
