@@ -90,14 +90,21 @@ class TrueSkillTracker:
       self.player_rounds_played[p] += match['team1score'] + match['team2score']
       self.player_rounds_won[p] += match['team2score']
 
+    # Calculate number of wins each team got
     if self.mode == 'match':
       round_diff = match['team1score'] - match['team2score']
-      rounds = [1] if round_diff > 0 else [2]
+      rounds = [1] if round_diff >= 0 else [2]
+      if match['team1score'] == match['team2score']:
+        rounds = [0] # special case!!
+
     elif self.mode == 'round':
       rounds = [1]*match['team1score'] + [2]*match['team2score']
+
     elif self.mode == 'round_diff':
       round_diff = match['team1score'] - match['team2score']
       rounds = [1]*round_diff if round_diff > 0 else [2]*(-round_diff)
+      if round_diff == 0: # draw
+        rounds = [0]
 
     np.random.seed(42)
     rounds = np.random.permutation(rounds)
@@ -121,19 +128,24 @@ class TrueSkillTracker:
       
       #### Calculating ratings (weighted by HLTV)
 
-      # Popflash games can't be drawn
-      ranks = [1, 0] if r==2 else [0, 1] 
+      if r == 0: # draw
+        ranks = [0, 0]
+        t1weights = [1, 1, 1, 1, 1] # Not sure how to do ratings on a draw
+        t2weights = [1, 1, 1, 1, 1]
 
-      if r==1:
-        t2weights = 1/t2weights
       else:
-        t1weights = 1/t1weights
+        ranks = [1, 0] if r==2 else [0, 1] 
 
-      t1weights **= self.hltv
-      t2weights **= self.hltv
+        if r==1:
+          t2weights = 1/t2weights
+        else:
+          t1weights = 1/t1weights
 
-      t1weights /= (t1weights.sum() / 5)
-      t2weights /= (t2weights.sum() / 5)
+        t1weights **= self.hltv
+        t2weights **= self.hltv
+
+        t1weights /= (t1weights.sum() / 5)
+        t2weights /= (t2weights.sum() / 5)
 
       if trace:
         print('weights:', np.around(t1weights, 1), np.around(t2weights, 1))
