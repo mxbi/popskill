@@ -27,5 +27,9 @@ class PopflashScreenshotter:
 
     return img
 
+  def close(self):
+    # Memory leak if this is not called
+    self.browser.quit()
+
 if __name__ == "__main__":
   print(PopflashScreenshotter().screenshot("1148142"))

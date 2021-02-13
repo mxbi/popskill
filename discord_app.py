@@ -48,6 +48,7 @@ async def on_message(message):
     async with message.channel.typing():
       pms = popflash_match_screenshot.PopflashScreenshotter()
       img = pms.screenshot(match_id)
+      pms.close()
       img = discord.File(io.BytesIO(img), 'match_id.png')
       await message.channel.send(file=img)
 
