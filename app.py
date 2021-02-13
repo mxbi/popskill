@@ -95,7 +95,7 @@ class TrueSkillTracker:
       round_diff = match['team1score'] - match['team2score']
       rounds = [1] if round_diff >= 0 else [2]
       if match['team1score'] == match['team2score']:
-        rounds = [0] # special case!!
+        rounds = [] # special case!!
 
     elif self.mode == 'round':
       rounds = [1]*match['team1score'] + [2]*match['team2score']
@@ -104,7 +104,7 @@ class TrueSkillTracker:
       round_diff = match['team1score'] - match['team2score']
       rounds = [1]*round_diff if round_diff > 0 else [2]*(-round_diff)
       if round_diff == 0: # draw
-        rounds = [0]
+        rounds = []
 
     np.random.seed(42)
     rounds = np.random.permutation(rounds)
