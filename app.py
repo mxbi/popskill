@@ -37,14 +37,18 @@ class Player:
   def __hash__(self):
     return self.id.__hash__()
 
+from scipy.stats import logistic
+
 class TrueSkillTracker:
   def __init__(self, default_rating=25):
-    self.ts = TrueSkill(mu=1000, sigma=8.33*40/5, beta=4.16*40, tau=0.083*40)
+    self.ts = TrueSkill(mu=1000, sigma=8.33*40/2, beta=4.16*40, tau=0.083*40, draw_probability=0) #, backend=(logistic.cdf, logistic.pdf, logistic.ppf))
     self.skills = defaultdict(lambda: self.ts.create_rating())
     self.hltv = defaultdict(int)
     self.player_counts = defaultdict(int)
     self.skill_history = [self.skills.copy()]
     self.match_ids = [] # To avoid repeating matches
+    self.hltv = 0.75
+    #print(f'RATING mu={mu} sigma={sigma} beta={beta}, tau={tau}, hltv={hltv}, mode=GAME')
 
   def process_match(self, match):
     if match['match_id'] in self.match_ids:
@@ -53,7 +57,7 @@ class TrueSkillTracker:
 
     self.match_ids.append(match['match_id'])
     
-    trace = False #match['match_id'] == '1141099'
+    trace = match['match_id'] == '1149271'
     if trace:
       print('TRACING MATCH', match['match_id'])
     
@@ -78,7 +82,11 @@ class TrueSkillTracker:
         print(match)
       self.player_counts[p] += 1
 
-    rounds = [1]*match['team1score'] + [2]*match['team2score']
+#    rounds = [1]*match['team1score'] + [2]*match['team2score']
+    round_diff = match['team1score'] - match['team2score']
+#    rounds = [1]*round_diff if round_diff > 0 else [2]*(-round_diff)
+    rounds = [1] if round_diff > 0 else [2]
+
     np.random.seed(42)
     rounds = np.random.permutation(rounds)
 
@@ -105,8 +113,8 @@ class TrueSkillTracker:
       else:
         t1weights = 1/t1weights
 
-      t1weights **= 0.75
-      t2weights **= 0.75
+      t1weights **= self.hltv
+      t2weights **= self.hltv
 
       t1weights /= (t1weights.sum() / 5)
       t2weights /= (t2weights.sum() / 5)
@@ -187,6 +195,8 @@ matches = sorted(matches, key=lambda x: x['date'])
 
 ts = TrueSkillTracker()
 
+print('Loaded', len(matches), 'Matches')
+
 for match in matches:
   ts.process_match(match)
 
@@ -198,6 +208,7 @@ class PlayerRankings(Resource):
   def get(self):
     ret = []
     for user, skill in ts.skills.items():
+      if ts.player_counts[user] < 6: continue
       user_skill_history = [{'SR': h[user].mu, 'date': '' if i==0 else matches[i-1]['date'].isoformat(), 'match_id': 0 if i==0 else matches[i-1]['match_id']} for i,h in enumerate(ts.skill_history)]
       user_skill_history = [list(g)[0] for k,g in groupby(user_skill_history, lambda x: x['SR'])]
       user_last_diff = user_skill_history[-1]['SR'] - user_skill_history[-2]['SR']
@@ -254,7 +265,7 @@ class SubmitMatch(Resource):
     resp['team1stats'] = '\n'.join(t1stats)
     resp['team2stats'] = '\n'.join(t2stats)
 
-    resp['time'] = match['date'].isotime()
+    resp['time'] = match['date'].isoformat()
     resp['image'] = match['map_image']
 
     return resp, 200
