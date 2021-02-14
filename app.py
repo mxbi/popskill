@@ -277,8 +277,11 @@ class SubmitMatch(Resource):
 
     # Response stuff for discord
     resp = {}
-    resp['team1status'] = '{} - {}'.format('W' if match['team1score'] > match['team2score'] else 'L', match['team1score'])
-    resp['team2status'] = '{} - {}'.format('W' if match['team2score'] > match['team1score'] else 'L', match['team2score'])
+    t1,t2 = 'WL' if match['team1score']>match['team2score'] else 'LW' if match['team1score']<match['team2score'] else 'TT'
+    resp = {
+        'team1status': "{} - {}".format(t1, match['team1score']),
+        'team2status': "{} - {}".format(t2, match['team2score'])
+    }
 
     t1stats = []
     for _, row in match['team1table'].iterrows():
