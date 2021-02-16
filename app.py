@@ -8,6 +8,7 @@ import os
 import discord
 import asyncio
 from threading import Thread
+import copy
 
 from trueskill import Rating, TrueSkill
 
@@ -229,6 +230,20 @@ for match in matches:
 
 ################ WEB API
 
+class Matches(Resource):
+  def get(self):
+    ret_matches = copy.deepcopy(matches)
+
+    for match in ret_matches:
+      match['team1table'].index = match['team1table']['player_link'].apply(lambda x: x.split('/')[-1])
+      match['team2table'].index = match['team2table']['player_link'].apply(lambda x: x.split('/')[-1])
+      match['team1table'] = match['team1table'].to_dict(orient='index')
+      match['team2table'] = match['team2table'].to_dict(orient='index')
+      match['date'] = match['date'].isoformat()
+
+    return ret_matches
+
+
 class PlayerRankings(Resource):
   def get(self):
     ret = []
@@ -309,6 +324,7 @@ class SubmitMatch(Resource):
 
 api.add_resource(PlayerRankings, '/rankings')
 api.add_resource(SubmitMatch, '/submit_match')
+api.add_resource(Matches, '/matches')
 
 
 # ronan = ([h[Player('Porkypus', '758084')].mu for h in ts.skill_history])
