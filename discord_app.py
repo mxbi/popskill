@@ -52,5 +52,5 @@ async def on_message(message):
       img = discord.File(io.BytesIO(img), 'match_id.png')
       await message.channel.send(file=img)
 
-client.run('ODA0MzMzMDYyMDk5OTU5ODA4.YBKziQ.X7MMTHR8zXZ85r4GLm-zVXK7ZBM')
+client.run(open('discord_token.txt', 'r').read().strip())
 print('Hello')
