@@ -171,38 +171,9 @@ class TrueSkillTracker:
 
 
 
-    
-
-
-GET_MATCHES = 0
-
-if GET_MATCHES:
-  matches = '1146703,1146629,1142428,1142326,1135008,1134907,1094886,1094757,1092480,1088135,1088067,1087975,1142520,1142428,1142326,1133930,1131132,1128002,1125764,1123980,1123292,1123133,1120870,1118333,1109606,1101715,1101607,1094886,1094757,1094696,1092480,1092336,1147353,1147236,1147113,1146703,1146629,1146522,1146408,1144625,1144458,1143208,1143041,1142520,1142428,1142326,1142244,1141099,1140989,1140501,1135008,1134907,1147353,1147236,1147113,1146703,1146629,1146522,1146408,1145704,1145612,1144316,1142244,1141745,1141659,1140989,1140501,1135008,1109606,1101715,1101607,1094886'.split(',')
-
-  user_urls = [x for x in open('popflash_ids.txt').read().split('\n') if x]
-
-  users = [pf.get_profile(u) for u in user_urls]
-  print(users)
-
-  for u in users:
-    match = u['match_table']
-    match = match[match['DATE'].str.contains('Jan')] # TODO: Fix
-    matches.extend(match['match_link'].values)
-
-  print(len(matches))
-  matches = [m.split('/')[-1] for m in matches]
-  matches = set(matches)
-  print(len(matches))
-
-  matches = [pf.get_match(m) for m in matches]
-  mlc.save(matches, 'matches3.pkl')
-else:
-  matches = mlc.load('matches3.pkl')
-
-# Users that are not part of CUDGS. Matches will not be considered if they contain any of these users
-user_blacklist = ['1123980', '1640115', '1642207', '1640116', '1640119', '1642471', '1640128']
-
-matches = [m for m in matches if not (set(m['team1table']['id']).intersection(user_blacklist) or set(m['team2table']['id']).intersection(user_blacklist))]
+# Load seed matches from before we had user submissions. From collect_seed_matches.py
+matches = mlc.load('seedmatches4.pkl')
+print(len(matches), 'seed matches')
 
 # Add matches submitted by users
 for match_id in [x for x in open('submitted_matches.txt').read().split('\n') if x]:
@@ -217,7 +188,9 @@ for match_id in [x for x in open('submitted_matches.txt').read().split('\n') if 
 # Bring forward old dates from before the format was updated
 for m in matches:
   if isinstance(m['date'], str):
+    print('updating date', m['match_id'])
     m['date'] = dateparser.parse(m['date'])
+    mlc.save(m, 'matches/{}.pkl'.format(m['match_id']))
 
 matches = sorted(matches, key=lambda x: x['date'])
 
