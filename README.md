@@ -9,4 +9,6 @@ This repo contains the backend rating, API and discord code.
 **`discord_app.py`**: Discord bot client - pretty minimal, most things happen in `app.py`. Uses a bot token in `discord_token.txt`  
 **`collect_seed_matches.py`**: This collects seed matches which are not user-submitted into `seedmatches4.pkl`.
 
+**Front-end: https://github.com/cameron-robey/popskill-frontend**
+
 Thanks to [@cameron-robey](https://github.com/cameron-robey), [@theo-brown](https://github.com/theo-brown) and [@speedstyle](https://github.com/speedstyle) for their help.  
