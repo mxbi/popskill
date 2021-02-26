@@ -9,6 +9,7 @@ import discord
 import asyncio
 from threading import Thread
 import copy
+from datetime import datetime
 
 from flask import Flask
 from flask_restful import Resource, Api, reqparse
@@ -22,14 +23,19 @@ app = Flask(__name__)
 CORS(app)
 api = Api(app)
 
-ts = TrueSkillTracker()
+seasons = {0: (datetime(2020, 1, 1, 0, 0, 0), datetime(2021, 3, 1, 0, 0, 0)),
+           1: (datetime(2021, 3, 1, 0, 0, 0), datetime(2021, 5, 1, 0, 0, 0))}
 
-db = MatchDB()
+# Launch database
+db = MatchDB(seasons)
 db.build_cache()
 
+ts = {}
+for season in seasons.keys():
+  ts[season] = TrueSkillTracker()
 
-for match in db.get_matches(season=0):
-  ts.process_match(match)
+  for match in db.get_matches(season=0):
+    ts[season].process_match(match)
 
 ################ WEB API
 
@@ -45,23 +51,24 @@ class Matches(Resource):
 
 class PlayerRankings(Resource):
   def get(self):
+    season = 0
     ret = []
 
-    matches = db.get_matches(season=0)
+    matches = db.get_matches(season=season)
 
-    for user, skill in ts.skills.items():
-      if ts.player_counts[user] < ts.min_ranked_matches: 
+    for user, skill in ts[season].skills.items():
+      if ts[season].player_counts[user] < ts[season].min_ranked_matches: 
         continue
 
-      user_skill_history = [{'SR': h[user].mu, 'date': '' if i==0 else matches[i-1]['date'].isoformat(), 'match_id': 0 if i==0 else matches[i-1]['match_id']} for i,h in enumerate(ts.skill_history)]
+      user_skill_history = [{'SR': h[user].mu, 'date': '' if i==0 else matches[i-1]['date'].isoformat(), 'match_id': 0 if i==0 else matches[i-1]['match_id']} for i,h in enumerate(ts[season].skill_history)]
       user_skill_history = [list(g)[0] for k,g in groupby(user_skill_history, lambda x: x['SR'])]
 
       user_last_diff = user_skill_history[-1]['SR'] - user_skill_history[-2]['SR']
       
-      user_rwp = (ts.player_rounds_won[user] / ts.player_rounds_played[user])
-      user_hltv = np.mean(ts.player_hltv_history[user])
+      user_rwp = (ts[season].player_rounds_won[user] / ts[season].player_rounds_played[user])
+      user_hltv = np.mean(ts[season].player_hltv_history[user])
 
-      ret.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts.player_counts[user], 'user_id': user.id, 
+      ret.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts[season].player_counts[user], 'user_id': user.id, 
                   'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history, 'rwp': user_rwp, 'hltv': user_hltv})
     return ret
 
@@ -75,25 +82,24 @@ class SubmitMatch(Resource):
     if not match_id.isnumeric():
       return "Bad popflash match url provided", 400
 
-    if match_id in ts.match_ids:
-      return "Match already processed", 400
+    # if match_id in ts.match_ids:
+    #   return "Match already processed", 400
 
-    # match_url = 'https://popflash.site/match/' + match_id
-
-    # match = pf.get_match(match_url)
-    # matches.append(match)
-    
-    # open('submitted_matches.txt', 'a').write(match_id + '\n')
-    # mlc.save(match, 'matches/{}.pkl'.format(match_id))
     try:
-      db.add_match(match_id)
+      match = db.add_match(match_id, ignore_existing=True)
     except match_db.MatchAlreadyAdded:
       return "Match already processed", 400
 
-    skills_before = ts.skills.copy()
+    
+    match_season = None
+    for s, (start, end) in seasons.items():
+      if start < match['date'].replace(tzinfo=None) < end:
+        match_season = s
+
+    skills_before = ts[match_season].skills.copy()
 
     # Will do nothing if match has already been processed
-    ts.process_match(match)
+    ts[match_season].process_match(match)
 
     # Response stuff for discord
     resp = {}
@@ -107,7 +113,7 @@ class SubmitMatch(Resource):
     for row in match['team1table'].values():
       player = Player(row['Name'], row['id'])
       oldskill = skills_before[player].mu
-      newskill = ts.skills[player].mu
+      newskill = ts[match_season].skills[player].mu
       diff = newskill - oldskill
       t1stats.append('{} - {} **({}{})**'.format(player.name, int(newskill), '+' if diff>0 else '', int(diff)))
 
@@ -115,7 +121,7 @@ class SubmitMatch(Resource):
     for row in match['team2table'].values():
       player = Player(row['Name'], row['id'])
       oldskill = skills_before[player].mu
-      newskill = ts.skills[player].mu
+      newskill = ts[match_season].skills[player].mu
       diff = newskill - oldskill
       t2stats.append('{} - {} **({}{})**'.format(player.name, int(newskill), '+' if diff>0 else '', int(diff)))
 

@@ -17,22 +17,19 @@ class MatchAlreadyAdded(MatchDBException):
     pass
 
 class MatchDB():
-    def __init__(self, cache_get_matches=True):
+    def __init__(self, seasons, cache_get_matches=True):
         self.API_VERSION = pf.API_VERSION
         
         # yes jamal i know this is insecure
         self.client = pymongo.MongoClient(os.getenv("MONGO_URI"))
-        self.db = self.client.popskill
+        self.db = self.client[os.getenv("MONGO_DB")]
         self.matches = self.db['matches']
         self.matches.create_index("match_id", unique=True)
         self.match_cache = self.db['match_cache_v' + str(self.API_VERSION)]
         self.match_cache.create_index("match_id", unique=True)
 
-        self.seasons = {0: (datetime.datetime(2020, 1, 1, 0, 0, 0), datetime.datetime(2021, 3, 1, 0, 0, 0)),
-                        1: (datetime.datetime(2021, 3, 1, 0, 0, 0), datetime.datetime(2021, 5, 1, 0, 0, 0))}
+        self.seasons = seasons
 
-        self.cache_get_matches = cache_get_matches
-        self.matches_cache = {}
 
     def _df_dictify(self, inp: dict):
         for k, v in inp.items():
