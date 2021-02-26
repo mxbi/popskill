@@ -28,7 +28,7 @@ if len(sys.argv)>1 and sys.argv[1] == 'testing':
     logging.info('Running in testing mode')
     SERVER = "http://localhost:7355"
 else:
-    SERVER = "https://vm.mxbi.net:7355"
+    SERVER = "https://api.sandb.ga"
 
 client = commands.Bot('!')
 
