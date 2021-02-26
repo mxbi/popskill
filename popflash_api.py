@@ -3,6 +3,9 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import dateparser
 
+# Invalidate caches when version number changes
+API_VERSION = 2
+
 def _strip_links_from_table(table):
   links = []
   for row in table.find_all('tr')[1:]:
@@ -10,7 +13,6 @@ def _strip_links_from_table(table):
   return links
 
 def get_profile(url):
-  # df = pd.read_html(url)
   page = requests.get(url)
   soup = BeautifulSoup(page.text, 'html.parser')
 
@@ -25,15 +27,17 @@ def get_profile(url):
   df = pd.read_html(str(tab), header=0)[0]
   df['match_link'] = _strip_links_from_table(tab)
 
-  return {'match_table': df, 'id': url.split('/')[-1], 'name': name}
+  return {'match_table': df, 'id': url.split('/')[-1], 'name': name, 'v': API_VERSION}
 
 def get_match(url):
-  if url.startswith('/match'):
+  if isinstance(url, int):
+    url = 'https://popflash.site/match/' + str(url)
+  elif url.startswith('/match'):
     url = 'https://popflash.site' + url
-  if url.isnumeric():
+  elif url.isnumeric():
     url = 'https://popflash.site/match/' + url
   
-  print(url)
+  print("Fetching", url)
   page = requests.get(url)
   soup = BeautifulSoup(page.text, 'html.parser')
 
@@ -55,12 +59,18 @@ def get_match(url):
 
   response['team1table'] = df1
   response['team2table'] = df2
+
+  response['team1table'].index = response['team1table']['player_link'].apply(lambda x: x.split('/')[-1])
+  response['team2table'].index = response['team2table']['player_link'].apply(lambda x: x.split('/')[-1])
+  response['team1table'] = response['team1table'].to_dict(orient='index')
+  response['team2table'] = response['team2table'].to_dict(orient='index')
   
   response['date'] = soup.select('#match-container > h2 > span')[0]['data-date']
   response['date'] = dateparser.parse(response['date'])
-  response['match_id'] = url.split('/')[-1]
+  response['match_id'] = int(url.split('/')[-1])
 
   response['map_image'] = soup.select('#match-container > div:nth-child(2) > div:nth-child(2) > img')[0]['src']
+  response['v'] = API_VERSION
 
   return response
 
