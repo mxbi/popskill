@@ -20,7 +20,6 @@ class MatchDB():
     def __init__(self, seasons, cache_get_matches=True):
         self.API_VERSION = pf.API_VERSION
         
-        # yes jamal i know this is insecure
         self.client = pymongo.MongoClient(os.getenv("MONGO_URI"))
         self.db = self.client[os.getenv("MONGO_DB")]
         self.matches = self.db['matches']
@@ -112,17 +111,27 @@ class MatchDB():
         m = self.match_cache.find_one({"match_id": match_id})
         return m
 
-    def get_matches(self, season=None):
-        
+    def get_matches(self, season=None, user_id: int=None):
+        query = {}
+
         if season is not None:
             start, end = self.seasons[season]
-            matches = list(self.match_cache.find({"date": {"$gte": start, "$lt": end}}))
-        else:
-            matches = list(self.match_cache.find({}))
+            query["date"] = {"$gte": start, "$lt": end}
+        
+        if user_id is not None:
+            query["$or"] = [{f"team1table.{user_id}": {"$exists": True}}, {f"team2table.{user_id}": {"$exists": True}}]
+
+        matches = list(self.match_cache.find(query))
         
         matches = [self._df_undictify(m) for m in sorted(matches, key=lambda x: x['date'])]
 
         for m in matches:
             del m['_id']
+            if season is None:
+                for s, (start, end) in self.seasons.items():
+                    if start < m['date'].replace(tzinfo=None) < end:
+                        m['meason'] = s
+            else:
+                m['season'] = season
 
         return matches

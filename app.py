@@ -11,7 +11,7 @@ from threading import Thread
 import copy
 from datetime import datetime
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask_restful import Resource, Api, reqparse
 from flask_cors import CORS
 
@@ -21,7 +21,7 @@ import match_db
 
 app = Flask(__name__)
 CORS(app)
-api = Api(app)
+# api = Api(app)
 
 seasons = {0: (datetime(2020, 1, 1, 0, 0, 0), datetime(2021, 3, 1, 0, 0, 0)),
            1: (datetime(2021, 3, 1, 0, 0, 0), datetime(2021, 5, 1, 0, 0, 0))}
@@ -34,7 +34,7 @@ ts = {}
 for season in seasons.keys():
   ts[season] = TrueSkillTracker()
 
-  for match in db.get_matches(season=0):
+  for match in db.get_matches(season=season):
     ts[season].process_match(match)
 
 ################ WEB API
@@ -47,6 +47,29 @@ class Matches(Resource):
       match['date'] = match['date'].isoformat()
 
     return ret_matches
+
+@app.route('/v2/leaderboard', defaults={'season': max(seasons.keys())})
+@app.route('/v2/leaderboard/<int:season>')
+class Leaderboard(Resource):
+  def get(self, season: int):
+
+    rankings = []
+    for user, skill in ts[season].skills.items():
+      if ts[season].player_counts[user] < ts[season].min_ranked_matches: 
+        continue
+
+      user_last_diff = ts[season].skill_history[-1][user].mu - ts[season].skill_history[-2][user].mu 
+      
+      user_rwp = (ts[season].player_rounds_won[user] / ts[season].player_rounds_played[user])
+      user_hltv = np.mean(ts[season].player_hltv_history[user])
+      user_adr = np.mean(ts[season].player_adr_history[user])
+
+      rankings.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts[season].player_counts[user], 'user_id': user.id, 
+                  'last_diff': int(user_last_diff), 'rwp': user_rwp, 'hltv': user_hltv, 'adr': user_adr})
+
+
+    resp = {'config_string': 'TODO', 'season_id': season, 'season_start': seasons[season][0].isoformat(), 'season_end': seasons[season][1].isoformat(), 'rankings': rankings}
+    return jsonify(flask.resp)
 
 
 class PlayerRankings(Resource):
@@ -130,10 +153,12 @@ class SubmitMatch(Resource):
 
     return resp, 200
 
-api.add_resource(PlayerRankings, '/rankings')
-api.add_resource(SubmitMatch, '/submit_match')
-api.add_resource(Matches, '/matches')
+# api.add_resource(PlayerRankings, '/rankings')
+# api.add_resource(SubmitMatch, '/submit_match')
+# api.add_resource(Matches, '/matches')
 
+# api.add_resource(Leaderboard, '/v2/leaderboard/<int:season>')
+# api.add_resource(Leaderboard, '/v2/leaderboard/')
 
 # ronan = ([h[Player('Porkypus', '758084')].mu for h in ts.skill_history])
 # ronan_var = np.array([h[Player('Porkypus', '758084')].sigma for h in ts.skill_history])
