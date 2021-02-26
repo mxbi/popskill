@@ -18,7 +18,7 @@ class Player:
     return self.id.__hash__()
 
 class TrueSkillTracker:
-  def __init__(self, mu=1000, sigma=8.33*40/2, beta=4.16*40, tau=0.083*40, mode='match', min_ranked_matches=6):
+  def __init__(self, mu=1000, sigma=8.33*40/2, beta=4.16*40, tau=0.083*40*4, mode='match', min_ranked_matches=2):
     self.min_ranked_matches = min_ranked_matches
     assert mode in ['round', 'match']
     self.mode = mode
@@ -49,8 +49,8 @@ class TrueSkillTracker:
     
     t1table = match['team1table']
     t2table = match['team2table']
-    t1players = [Player(p['Name'], p['id']) for _, p in t1table.iterrows()]
-    t2players = [Player(p['Name'], p['id']) for _, p in t2table.iterrows()]
+    t1players = [Player(p['Name'], p['id']) for p in t1table.values()]
+    t2players = [Player(p['Name'], p['id']) for p in t2table.values()]
 
     if trace:
       print('* before match:')
@@ -97,8 +97,8 @@ class TrueSkillTracker:
       t1skills = [self.skills[p] for p in t1players]
       t2skills = [self.skills[p] for p in t2players]
 
-      t1weights = np.array([p['HLTV'] for _, p in t1table.iterrows()])
-      t2weights = np.array([p['HLTV'] for _, p in t2table.iterrows()])
+      t1weights = np.array([p['HLTV'] for p in t1table.values()])
+      t2weights = np.array([p['HLTV'] for p in t2table.values()])
 
       # Keep track of HLTVs
       for (p, hltv) in zip(t1players + t2players, t1weights.tolist() + t2weights.tolist()):

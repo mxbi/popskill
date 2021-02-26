@@ -68,10 +68,10 @@ class Matches(Resource):
     ret_matches = db.get_matches(season=0)
 
     for match in ret_matches:
-      match['team1table'].index = match['team1table']['player_link'].apply(lambda x: x.split('/')[-1])
-      match['team2table'].index = match['team2table']['player_link'].apply(lambda x: x.split('/')[-1])
-      match['team1table'] = match['team1table'].to_dict(orient='index')
-      match['team2table'] = match['team2table'].to_dict(orient='index')
+      # match['team1table'].index = match['team1table']['player_link'].apply(lambda x: x.split('/')[-1])
+      # match['team2table'].index = match['team2table']['player_link'].apply(lambda x: x.split('/')[-1])
+      # match['team1table'] = match['team1table'].to_dict(orient='index')
+      # match['team2table'] = match['team2table'].to_dict(orient='index')
       match['date'] = match['date'].isoformat()
 
     return ret_matches
@@ -80,6 +80,8 @@ class Matches(Resource):
 class PlayerRankings(Resource):
   def get(self):
     ret = []
+
+    matches = db.get_matches(season=0)
 
     for user, skill in ts.skills.items():
       if ts.player_counts[user] < ts.min_ranked_matches: 
@@ -132,7 +134,7 @@ class SubmitMatch(Resource):
     }
 
     t1stats = []
-    for _, row in match['team1table'].iterrows():
+    for row in match['team1table'].values():
       player = Player(row['Name'], row['id'])
       oldskill = skills_before[player].mu
       newskill = ts.skills[player].mu
@@ -140,7 +142,7 @@ class SubmitMatch(Resource):
       t1stats.append('{} - {} **({}{})**'.format(player.name, int(newskill), '+' if diff>0 else '', int(diff)))
 
     t2stats = []
-    for _, row in match['team2table'].iterrows():
+    for row in match['team2table'].values():
       player = Player(row['Name'], row['id'])
       oldskill = skills_before[player].mu
       newskill = ts.skills[player].mu

@@ -4,7 +4,7 @@ import pandas as pd
 import dateparser
 
 # Invalidate caches when version number changes
-API_VERSION = 1
+API_VERSION = 2
 
 def _strip_links_from_table(table):
   links = []
@@ -60,6 +60,11 @@ def get_match(url):
 
   response['team1table'] = df1
   response['team2table'] = df2
+
+  response['team1table'].index = response['team1table']['player_link'].apply(lambda x: x.split('/')[-1])
+  response['team2table'].index = response['team2table']['player_link'].apply(lambda x: x.split('/')[-1])
+  response['team1table'] = response['team1table'].to_dict(orient='index')
+  response['team2table'] = response['team2table'].to_dict(orient='index')
   
   response['date'] = soup.select('#match-container > h2 > span')[0]['data-date']
   response['date'] = dateparser.parse(response['date'])

@@ -130,6 +130,7 @@ class MatchDB():
         
         t0 = time.time()
         matches = [self._df_undictify(m) for m in sorted(matches, key=lambda x: x['date'])]
+        print([m['date'] for m in matches])
         for m in matches:
             del m['_id']
         print("time", time.time() - t0, "time")
