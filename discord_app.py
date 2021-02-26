@@ -89,10 +89,12 @@ async def register(ctx, match):
                 return await ctx.send('Failed to process match:' + resp.text[:1000])
             resp = await resp.json()
 
+    print(resp)
+
     embed = discord.Embed(
         title='Match Report',
         url='https://pop.robey.xyz',
-        description='10-man played at {}'.format(resp['date'][:-34]),
+        description='10-man played at {}'.format(resp['time']),
     ).set_thumbnail(url=resp['image']) \
      .add_field(name=resp['team1status'], value=resp['team1stats']) \
      .add_field(name=resp['team2status'], value=resp['team2stats'])
