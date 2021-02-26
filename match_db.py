@@ -21,11 +21,11 @@ class MatchDB():
         self.db = self.client.popskill
         self.matches = self.db['matches']
         self.matches.create_index("match_id", unique=True)
-        self.match_cache = self.db['match_cache_v' + str(API_VERSION)]
+        self.match_cache = self.db['match_cache_v' + str(self.API_VERSION)]
         self.match_cache.create_index("match_id", unique=True)
 
-        self.seasons = {0: (datetime.datetime(2019, 1, 1, 0, 0, 0), datetime.datetime(2020, 3, 1, 0, 0, 0)),
-                        1: (datetime.datetime(2020, 3, 1, 0, 0, 0), datetime.datetime(2020, 5, 1, 0, 0, 0))}
+        self.seasons = {0: (datetime.datetime(2020, 1, 1, 0, 0, 0), datetime.datetime(2021, 3, 1, 0, 0, 0)),
+                        1: (datetime.datetime(2021, 3, 1, 0, 0, 0), datetime.datetime(2021, 5, 1, 0, 0, 0))}
 
         self.cache_get_matches = cache_get_matches
         self.matches_cache = {}
