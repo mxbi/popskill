@@ -4,7 +4,7 @@ import pandas as pd
 import dateparser
 
 # Invalidate caches when version number changes
-API_VERSION = 2
+API_VERSION = 3
 
 def _strip_links_from_table(table):
   links = []
@@ -79,6 +79,8 @@ def get_match(url):
   response['match_id'] = int(url.split('/')[-1])
 
   response['map_image'] = soup.select('#match-container > div:nth-child(2) > div:nth-child(2) > img')[0]['src']
+  response['map'] = soup.select('#match-container > div:nth-child(2) > div:nth-child(1) > div')[0].text.split('\n')[-4]
+
   response['v'] = API_VERSION
 
   return response
@@ -86,5 +88,5 @@ def get_match(url):
 
 if __name__ == '__main__':
   print(get_profile('https://popflash.site/user/1598215'))
-  print(get_match('https://popflash.site/match/1147113'))
+  print(get_match('https://popflash.site/match/1165481'))
 

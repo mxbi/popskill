@@ -18,7 +18,7 @@ class Player:
     return self.id.__hash__()
 
 class TrueSkillTracker:
-  def __init__(self, mu=1000, sigma=8.33*40/2, beta=4.16*40, tau=0.083*40*4, mode='match', min_ranked_matches=2):
+  def __init__(self, username_tracker, mu=1000, sigma=8.33*40/2, beta=4.16*40, tau=0.083*40*4, mode='match', min_ranked_matches=2):
     self.min_ranked_matches = min_ranked_matches
     assert mode in ['round', 'match']
     self.mode = mode
@@ -30,6 +30,7 @@ class TrueSkillTracker:
     self.skill_history = [self.skills.copy()]
     self.match_ids = [] # To avoid repeating matches
     self.hltv = 0.75
+    self.user_names = username_tracker
 
     self.player_rounds_played = defaultdict(int)
     self.player_rounds_won = defaultdict(int)
@@ -96,6 +97,7 @@ class TrueSkillTracker:
     for p in t1players + t2players:
         hltv = table[p.id]['HLTV']
         adr = table[p.id]['ADR']
+        self.user_names[p.id] = p
         self.player_hltv_history[p].append(hltv)
         self.player_adr_history[p].append(adr)
     
