@@ -1,99 +1,119 @@
+import asyncio  # util functions
 import discord
-import requests
-import json
-import sys
-import io
-import pymongo
+import logging  # receives logs from discord.py
 
+logging.basicConfig(level=logging.INFO)
+
+import aiohttp  # for querying api
+
+import io
 import popflash_match_screenshot
+
+# for adding users to database
+from motor.motor_asyncio import AsyncIOMotorClient as MongoClient
+import pymongo.errors
+
+# fetches popflash profiles
 import popflash_api as pf
 
 import os
 import dotenv
 dotenv.load_dotenv()
 
-if len(sys.argv) >1 and sys.argv[1] == 'testing':
-  print('Running in testing mode')
-  SERVER = "http://localhost:7355"
+import sys
+
+if len(sys.argv)>1 and sys.argv[1] == 'testing':
+    logging.info('Running in testing mode')
+    SERVER = "http://localhost:7355"
 else:
-  SERVER = "https://vm.mxbi.net:7355"
+    SERVER = "https://vm.mxbi.net:7355"
 
-client = discord.Client()
-#pms = popflash_match_screenshot.PopflashScreenshotter()
+client = discord.ext.commands.Bot('!')
 
-@client.event
-async def on_ready():
-  print("We have logged in as {0.user}".format(client))
+class DBHandler:
+    def __init__(self):
+        self.client = MongoClient(os.getenv("MONGO_URI"))
+        self.db = self.client[os.getenv("MONGO_DB")]
+        self.users = self.db['user_links']
+        self._idx = asyncio.ensure_future(self.users.create_index("discord_id", unique=True))
 
-class DBHandler():
-  def __init__(self):
-    self.client = pymongo.MongoClient(os.getenv("MONGO_URI"))
-    self.db = self.client[os.getenv("MONGO_DB")]
-    self.users = self.db['user_links']
-    self.users.create_index("discord_id", unique=True)
-
-  async def handle_user_registration(self, message: discord.Message):
-    user = {"discord_name": message.author.display_name + "#" + message.author.discriminator, "discord_id": message.author.id}
-    popflash_id = message.content.split('/')[-1].strip()
-
-    if not popflash_id.isnumeric():
-      await message.channel.send("It didn't look like you sent a popflash user link. Send a message in the form 'https://popflash.site/user/1610522'")
-      return
-
-    user['popflash_id'] = popflash_id
-
-    profile = pf.get_profile(popflash_id)
-    user['steam'] = profile['steam']
-    user['v'] = profile['v']
-    print(user)
-
-    try:
-      self.users.insert_one(user)
-    except pymongo.errors.DuplicateKeyError:
-      await message.channel.send("Failed: you are already registered :(")
-      return
-
-    await message.channel.send("Registered! Thank you")
+    @property
+    def ready(self):
+        return self._idx.done()
 
 db = DBHandler()
 
-@client.event
+@client.listen()
 async def on_message(message: discord.Message):
-  # print(message.channel, message)
-  if message.author == client.user:
-    return
+    if not (isinstance(message.channel, discord.DMChannel) and '/user' in message.content):
+        return
 
-  if isinstance(message.channel, discord.channel.DMChannel) and "/user" in message.content:
-    await db.handle_user_registration(message)
+    assert db.ready
 
+    popflash_id = message.content.split('/')[-1].strip()
+    if not popflash_id.isnumeric():
+        return await message.channel.send("It didn't look like you sent a popflash user link. Send a message of the form 'https://popflash.site/user/1610522'")
 
-  if message.content.startswith('!register') or message.content.startswith('!pop'):
-    print(message)
-    match_url = message.content.split(' ')[1]
+    profile = await asyncio.get_event_loop().run_in_executor(
+        None, lambda: pf.get_profile(popflash_id)
+    )
 
-    resp = requests.post(SERVER + '/submit_match', data=json.dumps({'match_url': match_url}), headers={"Content-Type": "application/json"})
-    if resp.status_code != 200:
-      print(resp, resp.text)
-      await message.channel.send('Failed to process match:' + resp.text[:1000])
-      return
-    else:
-      resp = resp.json()
+    user = {
+        'discord_name': str(message.author),
+        'discord_id': message.author.id,
+        'popflash_id': popflash_id,
+        'steam': profile['steam'],
+        'v': profile['v'],
+    }
 
-    embed=discord.Embed(title="Match Report", url="https://pop.robey.xyz", description="10-man played at {}".format(resp['time'][:-34]))
-    embed.set_thumbnail(url=resp['image'])
-    embed.add_field(name=resp['team1status'], value=resp['team1stats'], inline=True)
-    embed.add_field(name=resp['team2status'], value=resp['team2stats'], inline=True)
-    await message.channel.send(embed=embed)
+    logging.info(str(user))
 
-  if message.content.startswith('!stats') or message.content.startswith('!pop'):
-    print(message)
-    match_id = message.content.split(' ')[1].split('/')[-1]
-    async with message.channel.typing():
-      pms = popflash_match_screenshot.PopflashScreenshotter()
-      img = pms.screenshot(match_id)
-      pms.close()
-      img = discord.File(io.BytesIO(img), 'match_id.png')
-      await message.channel.send(file=img)
+    try:
+        await db.users.insert_one(user)
+    except pymongo.errors.DuplicateKeyError:
+        return await message.channel.send("Failed: you are already registered :(")
+
+    await message.channel.send("Registered! Thank you")
+
+@client.command()
+async def register(ctx, match):
+    logging.info(ctx.message.content)
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(SERVER+'/submit_match', json={'match_url': match}) as resp:
+            if resp.status != 200:
+                logging.warning(resp.text)
+                return await ctx.send('Failed to process match:' + resp.text[:1000])
+            resp = await resp.json()
+
+    embed = discord.Embed(
+        title='Match Report',
+        url='https://pop.robey.xyz',
+        description='10-man played at {}'.format(resp['date'][:-34]),
+    ).set_thumbnail(url=resp['image']) \
+     .add_field(name=resp['team1status'], value=resp['team1stats']) \
+     .add_field(name=resp['team2status'], value=resp['team2stats'])
+
+    await ctx.send(embed=embed)
+
+@client.command()
+async def stats(ctx, match):
+    logging.info(ctx.message.content)
+
+    def screenshot():
+        pms = popflash_match_screenshot.PopflashScreenshotter()
+        img = pms.screenshot(match.split('/')[-1])
+        pms.close()
+        return discord.File(io.BytesIO(img), 'match_stats.png')
+
+    async with ctx.typing():
+        file = await asyncio.get_event_loop().run_in_executor(None, screenshot)
+
+    await ctx.send(file=file)
+
+@client.command()
+async def pop(ctx, match):
+    asyncio.ensure_future(ctx.invoke(register, match))
+    asyncio.ensure_future(ctx.invoke(stats, match))
 
 client.run(os.getenv("DISCORD_TOKEN"))
-print('Hello')
