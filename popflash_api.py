@@ -13,6 +13,13 @@ def _strip_links_from_table(table):
   return links
 
 def get_profile(url):
+  if isinstance(url, int):
+    url = 'https://popflash.site/user/' + str(url)
+  elif url.startswith('/user'):
+    url = 'https://popflash.site' + url
+  elif url.isnumeric():
+    url = 'https://popflash.site/user/' + url
+
   page = requests.get(url)
   soup = BeautifulSoup(page.text, 'html.parser')
 
@@ -27,7 +34,9 @@ def get_profile(url):
   df = pd.read_html(str(tab), header=0)[0]
   df['match_link'] = _strip_links_from_table(tab)
 
-  return {'match_table': df, 'id': url.split('/')[-1], 'name': name, 'v': API_VERSION}
+  steam = soup.select('#page-container > div:nth-child(2) > div > div:nth-child(1) > h3 > span.steam-profile > a')[0]['href']
+
+  return {'match_table': df, 'id': url.split('/')[-1], 'name': name, 'steam': steam, 'v': API_VERSION}
 
 def get_match(url):
   if isinstance(url, int):

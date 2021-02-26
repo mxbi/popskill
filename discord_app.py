@@ -3,8 +3,10 @@ import requests
 import json
 import sys
 import io
+import pymongo
 
 import popflash_match_screenshot
+import popflash_api as pf
 
 import os
 import dotenv
@@ -23,10 +25,47 @@ client = discord.Client()
 async def on_ready():
   print("We have logged in as {0.user}".format(client))
 
+class DBHandler():
+  def __init__(self):
+    self.client = pymongo.MongoClient(os.getenv("MONGO_URI"))
+    self.db = self.client[os.getenv("MONGO_DB")]
+    self.users = self.db['user_links']
+    self.users.create_index("discord_id", unique=True)
+
+  async def handle_user_registration(self, message: discord.Message):
+    user = {"discord_name": message.author.display_name + "#" + message.author.discriminator, "discord_id": message.author.id}
+    popflash_id = message.content.split('/')[-1].strip()
+
+    if not popflash_id.isnumeric():
+      await message.channel.send("It didn't look like you sent a popflash user link. Send a message in the form 'https://popflash.site/user/1610522'")
+      return
+
+    user['popflash_id'] = popflash_id
+
+    profile = pf.get_profile(popflash_id)
+    user['steam'] = profile['steam']
+    user['v'] = profile['v']
+    print(user)
+
+    try:
+      self.users.insert_one(user)
+    except pymongo.errors.DuplicateKeyError:
+      await message.channel.send("Failed: you are already registered :(")
+      return
+
+    await message.channel.send("Registered! Thank you")
+
+db = DBHandler()
+
 @client.event
-async def on_message(message):
+async def on_message(message: discord.Message):
+  # print(message.channel, message)
   if message.author == client.user:
     return
+
+  if isinstance(message.channel, discord.channel.DMChannel) and "/user" in message.content:
+    await db.handle_user_registration(message)
+
 
   if message.content.startswith('!register') or message.content.startswith('!pop'):
     print(message)
