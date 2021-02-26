@@ -26,7 +26,7 @@ CORS(app)
 
 seasons = {0: (datetime(2020, 1, 1, 0, 0, 0), datetime(2021, 3, 1, 0, 0, 0)),
            1: (datetime(2021, 3, 1, 0, 0, 0), datetime(2021, 5, 1, 0, 0, 0))}
-default_season = max(seasons.keys())
+default_season = 0
 
 # Launch database
 db = MatchDB(seasons)
