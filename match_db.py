@@ -16,12 +16,16 @@ class MatchDBException(Exception):
 class MatchAlreadyAdded(MatchDBException):
     pass
 
+class MatchDoesNotExist(MatchDBException):
+    pass
+
 class MatchDB():
     def __init__(self, seasons, cache_get_matches=True):
         self.API_VERSION = pf.API_VERSION
         
         self.client = pymongo.MongoClient(os.getenv("MONGO_URI"))
         self.db = self.client[os.getenv("MONGO_DB")]
+        print(f'[MatchDB] using DB {os.getenv("MONGO_DB")}')
         self.matches = self.db['matches']
         self.matches.create_index("match_id", unique=True)
         self.match_cache = self.db['match_cache_v' + str(self.API_VERSION)]
@@ -109,6 +113,9 @@ class MatchDB():
     def get_match(self, match_id: Union[str,int]):
         match_id = self._normalise_match_id(match_id)
         m = self.match_cache.find_one({"match_id": match_id})
+        if not m:
+            raise MatchDoesNotExist(match_id)
+        del m['_id']
         return m
 
     def get_matches(self, season=None, user_id: int=None):
@@ -130,8 +137,9 @@ class MatchDB():
             if season is None:
                 for s, (start, end) in self.seasons.items():
                     if start < m['date'].replace(tzinfo=None) < end:
-                        m['meason'] = s
+                        m['season'] = s
             else:
                 m['season'] = season
 
+        # print(matches)
         return matches

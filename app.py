@@ -9,9 +9,10 @@ import discord
 import asyncio
 from threading import Thread
 import copy
-from datetime import datetime
+from datetime import datetime, date
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
+import flask
 from flask_restful import Resource, Api, reqparse
 from flask_cors import CORS
 
@@ -25,96 +26,126 @@ CORS(app)
 
 seasons = {0: (datetime(2020, 1, 1, 0, 0, 0), datetime(2021, 3, 1, 0, 0, 0)),
            1: (datetime(2021, 3, 1, 0, 0, 0), datetime(2021, 5, 1, 0, 0, 0))}
+default_season = max(seasons.keys())
 
 # Launch database
 db = MatchDB(seasons)
 db.build_cache()
 
+username_tracker = {}
+
 ts = {}
 for season in seasons.keys():
-  ts[season] = TrueSkillTracker()
+    ts[season] = TrueSkillTracker(username_tracker=username_tracker)
 
-  for match in db.get_matches(season=season):
-    ts[season].process_match(match)
+    for match in db.get_matches(season=season):
+        ts[season].process_match(match)
 
 ################ WEB API
 
-class Matches(Resource):
-  def get(self):
-    ret_matches = db.get_matches(season=0)
-
-    for match in ret_matches:
-      match['date'] = match['date'].isoformat()
-
-    return ret_matches
-
-@app.route('/v2/leaderboard', defaults={'season': max(seasons.keys())})
-@app.route('/v2/leaderboard/<int:season>')
-class Leaderboard(Resource):
-  def get(self, season: int):
+@app.route('/v2/leaderboard/<int:season>', methods=['GET'])
+@app.route('/v2/leaderboard', methods=['GET'])
+def get_leaderboard(season: int=default_season):
+    if season not in seasons:
+        return "Response", 400
 
     rankings = []
     for user, skill in ts[season].skills.items():
-      if ts[season].player_counts[user] < ts[season].min_ranked_matches: 
-        continue
+        if ts[season].player_counts[user] < ts[season].min_ranked_matches: 
+            continue
 
-      user_last_diff = ts[season].skill_history[-1][user].mu - ts[season].skill_history[-2][user].mu 
-      
-      user_rwp = (ts[season].player_rounds_won[user] / ts[season].player_rounds_played[user])
-      user_hltv = np.mean(ts[season].player_hltv_history[user])
-      user_adr = np.mean(ts[season].player_adr_history[user])
+        user_last_diff = ts[season].skill_history[-1][user].mu - ts[season].skill_history[-2][user].mu 
+        
+        user_rwp = (ts[season].player_rounds_won[user] / ts[season].player_rounds_played[user])
+        user_hltv = np.mean(ts[season].player_hltv_history[user])
+        user_adr = np.mean(ts[season].player_adr_history[user])
 
-      rankings.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts[season].player_counts[user], 'user_id': user.id, 
-                  'last_diff': int(user_last_diff), 'rwp': user_rwp, 'hltv': user_hltv, 'adr': user_adr})
+        rankings.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts[season].player_counts[user], 'user_id': user.id, 
+                                'last_diff': int(user_last_diff), 'rwp': user_rwp, 'hltv': user_hltv, 'adr': user_adr})
 
 
     resp = {'config_string': 'TODO', 'season_id': season, 'season_start': seasons[season][0].isoformat(), 'season_end': seasons[season][1].isoformat(), 'rankings': rankings}
-    return jsonify(flask.resp)
+    return resp
 
+@app.route('/v2/seasons')
+def get_seasons():
+    return seasons
 
-class PlayerRankings(Resource):
-  def get(self):
+@app.route('/v2/user/<int:user_id>/<int:season>', methods=['GET'])
+@app.route('/v2/user/<int:user_id>', methods=['GET'])
+def get_user(user_id: int, season: int=None):
+    username = '[unknown]'
+
+    user_matches = db.get_matches(user_id=user_id, season=season)
+    season_matches = defaultdict(list)
+    max_season = -1
+    for m in user_matches:
+        season_matches[m['season']].append(m)
+        max_season = max(max_season, m['season'])
+
+    # We want empty seasons instead of missing seasons where the user has never played
+    if season:
+        season_matches[season]
+    else:
+        for season in seasons:
+            season_matches[season]
+    
+    # We do a bit of a dance to get the user's username
+    username = username_tracker[str(user_id)].name
+    resp = {"user_id": user_id, 'seasons': season_matches, 'username': username}
+    return resp
+
+@app.route('/v2/match/<int:match_id>', methods=['GET'])
+def get_match(match_id: int):
+    try:
+        return db.get_match(match_id)
+    except match_db.MatchDoesNotExist:
+        return "Match does not exist (or is not in cache)", 200
+
+############ COMPAT
+@app.route('/matches')
+def get_matches_v1():
+    return jsonify(db.get_matches(season=0))
+
+@app.route('/rankings')
+def get_rankings_v1():
     season = 0
     ret = []
 
     matches = db.get_matches(season=season)
 
     for user, skill in ts[season].skills.items():
-      if ts[season].player_counts[user] < ts[season].min_ranked_matches: 
-        continue
+        if ts[season].player_counts[user] < ts[season].min_ranked_matches: 
+            continue
 
-      user_skill_history = [{'SR': h[user].mu, 'date': '' if i==0 else matches[i-1]['date'].isoformat(), 'match_id': 0 if i==0 else matches[i-1]['match_id']} for i,h in enumerate(ts[season].skill_history)]
-      user_skill_history = [list(g)[0] for k,g in groupby(user_skill_history, lambda x: x['SR'])]
+        user_skill_history = [{'SR': h[user].mu, 'date': '' if i==0 else matches[i-1]['date'].isoformat(), 'match_id': 0 if i==0 else matches[i-1]['match_id']} for i,h in enumerate(ts[season].skill_history)]
+        user_skill_history = [list(g)[0] for k,g in groupby(user_skill_history, lambda x: x['SR'])]
 
-      user_last_diff = user_skill_history[-1]['SR'] - user_skill_history[-2]['SR']
-      
-      user_rwp = (ts[season].player_rounds_won[user] / ts[season].player_rounds_played[user])
-      user_hltv = np.mean(ts[season].player_hltv_history[user])
-      user_adr = np.mean(ts[season].player_adr_history[user])
+        user_last_diff = user_skill_history[-1]['SR'] - user_skill_history[-2]['SR']
+        
+        user_rwp = (ts[season].player_rounds_won[user] / ts[season].player_rounds_played[user])
+        user_hltv = np.mean(ts[season].player_hltv_history[user])
+        user_adr = np.mean(ts[season].player_adr_history[user])
 
-      ret.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts[season].player_counts[user], 'user_id': user.id, 
-                  'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history, 'rwp': user_rwp, 'hltv': user_hltv, 'adr': user_adr})
-    return ret
+        ret.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts[season].player_counts[user], 'user_id': user.id, 
+                                'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history, 'rwp': user_rwp, 'hltv': user_hltv, 'adr': user_adr})
+    return jsonify(ret) # list must be jsonifyed manually :(
 
-parser = reqparse.RequestParser()
-parser.add_argument('match_url')
-
-class SubmitMatch(Resource):
-  def post(self):
-    args = parser.parse_args()
-    match_id = args['match_url'].split('/')[-1]
+@app.route('/submit_match', methods=['POST'])
+def post_submit_match_v1():
+    match_id = request.json['match_url'].split('/')[-1]
     if not match_id.isnumeric():
-      return "Bad popflash match url provided", 400
+        return "Bad popflash match url provided", 400
 
     try:
-      match = db.add_match(match_id)
+        match = db.add_match(match_id)
     except match_db.MatchAlreadyAdded:
-      return "Match already processed", 400
+        return "Match already processed", 400
 
     match_season = None
     for s, (start, end) in seasons.items():
-      if start < match['date'].replace(tzinfo=None) < end:
-        match_season = s
+        if start < match['date'].replace(tzinfo=None) < end:
+            match_season = s
 
     skills_before = ts[match_season].skills.copy()
 
@@ -125,25 +156,25 @@ class SubmitMatch(Resource):
     resp = {}
     t1,t2 = 'WL' if match['team1score']>match['team2score'] else 'LW' if match['team1score']<match['team2score'] else 'TT'
     resp = {
-        'team1status': "{} - {}".format(t1, match['team1score']),
-        'team2status': "{} - {}".format(t2, match['team2score'])
+            'team1status': "{} - {}".format(t1, match['team1score']),
+            'team2status': "{} - {}".format(t2, match['team2score'])
     }
 
     t1stats = []
     for row in match['team1table'].values():
-      player = Player(row['Name'], row['id'])
-      oldskill = skills_before[player].mu
-      newskill = ts[match_season].skills[player].mu
-      diff = newskill - oldskill
-      t1stats.append('{} - {} **({}{})**'.format(player.name, int(newskill), '+' if diff>0 else '', int(diff)))
+        player = Player(row['Name'], row['id'])
+        oldskill = skills_before[player].mu
+        newskill = ts[match_season].skills[player].mu
+        diff = newskill - oldskill
+        t1stats.append('{} - {} **({}{})**'.format(player.name, int(newskill), '+' if diff>0 else '', int(diff)))
 
     t2stats = []
     for row in match['team2table'].values():
-      player = Player(row['Name'], row['id'])
-      oldskill = skills_before[player].mu
-      newskill = ts[match_season].skills[player].mu
-      diff = newskill - oldskill
-      t2stats.append('{} - {} **({}{})**'.format(player.name, int(newskill), '+' if diff>0 else '', int(diff)))
+        player = Player(row['Name'], row['id'])
+        oldskill = skills_before[player].mu
+        newskill = ts[match_season].skills[player].mu
+        diff = newskill - oldskill
+        t2stats.append('{} - {} **({}{})**'.format(player.name, int(newskill), '+' if diff>0 else '', int(diff)))
 
     resp['team1stats'] = '\n'.join(t1stats)
     resp['team2stats'] = '\n'.join(t2stats)
@@ -151,14 +182,23 @@ class SubmitMatch(Resource):
     resp['time'] = match['date'].isoformat()
     resp['image'] = match['map_image']
 
+    print('end')
     return resp, 200
 
-# api.add_resource(PlayerRankings, '/rankings')
-# api.add_resource(SubmitMatch, '/submit_match')
-# api.add_resource(Matches, '/matches')
+class JSONEncoder(flask.json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, date): return obj.isoformat()
+        if isinstance(obj, list): return jsonify(obj)
+        try:
+            iterable = iter(obj)
+        except TypeError:
+            pass
+        else:
+            return tuple(iterable)
 
-# api.add_resource(Leaderboard, '/v2/leaderboard/<int:season>')
-# api.add_resource(Leaderboard, '/v2/leaderboard/')
+        return flask.json.JSONEncoder.default(self, obj)
+
+app.json_encoder = JSONEncoder
 
 # ronan = ([h[Player('Porkypus', '758084')].mu for h in ts.skill_history])
 # ronan_var = np.array([h[Player('Porkypus', '758084')].sigma for h in ts.skill_history])
@@ -172,5 +212,5 @@ class SubmitMatch(Resource):
 # print(ronan)
 
 if __name__ == '__main__':
-    app.run(debug=False, port=7355)
-    
+        app.run(debug=True, port=7355)
+        
