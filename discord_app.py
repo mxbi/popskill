@@ -74,7 +74,7 @@ async def on_message(message: discord.Message):
     try:
         await db.users.insert_one(user)
     except pymongo.errors.DuplicateKeyError:
-        return await message.channel.send("Failed: you are already registered :(")
+        return await message.channel.send("You are already registered :)")
 
     await message.channel.send("Registered! Thank you")
 

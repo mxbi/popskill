@@ -70,7 +70,7 @@ class PlayerRankings(Resource):
       user_adr = np.mean(ts[season].player_adr_history[user])
 
       ret.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts[season].player_counts[user], 'user_id': user.id, 
-                  'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history, 'rwp': user_rwp, 'hltv': user_hltv})
+                  'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history, 'rwp': user_rwp, 'hltv': user_hltv, 'adr': user_adr})
     return ret
 
 parser = reqparse.RequestParser()
