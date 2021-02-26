@@ -1,6 +1,8 @@
 import asyncio  # util functions
 import discord
+from discord.ext import commands
 import logging  # receives logs from discord.py
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,7 +30,7 @@ if len(sys.argv)>1 and sys.argv[1] == 'testing':
 else:
     SERVER = "https://vm.mxbi.net:7355"
 
-client = discord.ext.commands.Bot('!')
+client = commands.Bot('!')
 
 class DBHandler:
     def __init__(self):
@@ -63,6 +65,7 @@ async def on_message(message: discord.Message):
         'discord_id': message.author.id,
         'popflash_id': popflash_id,
         'steam': profile['steam'],
+        'register_date': datetime.now(),
         'v': profile['v'],
     }
 
