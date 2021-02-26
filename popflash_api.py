@@ -13,7 +13,6 @@ def _strip_links_from_table(table):
   return links
 
 def get_profile(url):
-  # df = pd.read_html(url)
   page = requests.get(url)
   soup = BeautifulSoup(page.text, 'html.parser')
 

@@ -54,7 +54,6 @@ class MatchDB():
         all_matches = list(self.matches.find({}))
         ids = [m['match_id'] for m in all_matches]
         cache_ids = [m['match_id'] for m in list(self.match_cache.find({}, projection=["match_id"]))]
-        # print(cache_ids)
 
         rem_ids = set(ids) - set(cache_ids)
         if len(rem_ids) > 0:
@@ -117,11 +116,9 @@ class MatchDB():
         if season is not None:
             start, end = self.seasons[season]
             matches = list(self.match_cache.find({"date": {"$gte": start, "$lt": end}}))
-            # matches = list(self.match_cache.find({}))
         else:
             matches = list(self.match_cache.find({}))
         
-        t0 = time.time()
         matches = [self._df_undictify(m) for m in sorted(matches, key=lambda x: x['date'])]
 
         for m in matches:
