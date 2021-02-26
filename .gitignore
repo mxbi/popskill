@@ -1,3 +1,4 @@
+*.service
 matches/
 submitted_matches.txt
 sid.txt
