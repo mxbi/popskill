@@ -6,6 +6,10 @@ import io
 
 import popflash_match_screenshot
 
+import os
+import dotenv
+dotenv.load_dotenv()
+
 if len(sys.argv) >1 and sys.argv[1] == 'testing':
   print('Running in testing mode')
   SERVER = "http://localhost:7355"
@@ -52,5 +56,5 @@ async def on_message(message):
       img = discord.File(io.BytesIO(img), 'match_id.png')
       await message.channel.send(file=img)
 
-client.run(open('discord_token.txt', 'r').read().strip())
+client.run(os.getenv("DISCORD_TOKEN"))
 print('Hello')

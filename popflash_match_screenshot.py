@@ -2,12 +2,16 @@ from selenium import webdriver
 from time import sleep
 from io import BytesIO
 
+import os
+import dotenv
+dotenv.load_dotenv()
+
 class PopflashScreenshotter:
   def __init__(self):
     options = webdriver.ChromeOptions()
     options.headless = True
     self.browser = webdriver.Chrome(options=options)
-    self.login_cookie = open("sid.txt", "r").read().strip()
+    self.login_cookie = os.getenv("POPFLASH_SID")
     print('Started selenium.')
 
 
