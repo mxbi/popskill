@@ -14,9 +14,7 @@ class MatchAlreadyAdded(MatchDBException):
 
 class MatchDB():
     def __init__(self, cache_get_matches=True):
-
-        from popflash_api import API_VERSION
-        self.API_VERSION = API_VERSION
+        self.API_VERSION = pf.API_VERSION
         
         # yes jamal i know this is insecure
         self.client = pymongo.MongoClient("mongodb+srv://popskill:popskill@cluster0.imry2.mongodb.net/popskill?retryWrites=true&w=majority")
@@ -92,7 +90,7 @@ class MatchDB():
 
     def add_match(self, match_id: Union[str, int], cache: dict=None, ignore_existing: bool=False) -> Union[bool, dict]:
         # cache: Can provide manually a game object, but otherwise this will be fetched
-        #  ignore_existing: If match is already in database, ignore it
+        # ignore_existing: If match is already in database, ignore it
         match_id = self._normalise_match_id(match_id)
         match = {"match_id": match_id, "add_time": datetime.datetime.utcnow()}
 
@@ -115,23 +113,18 @@ class MatchDB():
         return m
 
     def get_matches(self, season=None):
-        # if self.cache_get_matches and
-        print('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA') 
         
         if season is not None:
             start, end = self.seasons[season]
-            t0 = time.time()
-            # matches = list(self.match_cache.find({"date": {"$gte": start, "$lt": end}}))
-            matches = list(self.match_cache.find({}))
-            print("time", time.time() - t0, "time")
+            matches = list(self.match_cache.find({"date": {"$gte": start, "$lt": end}}))
+            # matches = list(self.match_cache.find({}))
         else:
-            print("no season")
             matches = list(self.match_cache.find({}))
         
         t0 = time.time()
         matches = [self._df_undictify(m) for m in sorted(matches, key=lambda x: x['date'])]
-        print([m['date'] for m in matches])
+
         for m in matches:
             del m['_id']
-        print("time", time.time() - t0, "time")
+
         return matches

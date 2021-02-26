@@ -16,40 +16,11 @@ from flask_cors import CORS
 
 from skill_tracker import TrueSkillTracker, Player
 from match_db import MatchDB
+import match_db
 
 app = Flask(__name__)
 CORS(app)
 api = Api(app)
-
-if not os.path.exists('matches/'):
-  os.mkdir('matches/')
-
-
-
-# Load seed matches from before we had user submissions. From collect_seed_matches.py
-# matches = mlc.load('seedmatches4.pkl')
-# print(len(matches), 'seed matches')
-
-# Add matches submitted by users
-# for match_id in [x for x in open('submitted_matches.txt').read().split('\n') if x]:
-#   try:
-#     match = mlc.load('matches/{}.pkl'.format(match_id))
-#   except:
-#     match = pf.get_match(match_id)
-#     mlc.save(match, 'matches/{}.pkl'.format(match_id))
-
-#   matches.append(match)
-
-# Bring forward old dates from before the format was updated
-# for m in matches:
-#   if isinstance(m['date'], str):
-#     print('updating date', m['match_id'])
-#     m['date'] = dateparser.parse(m['date'])
-#     mlc.save(m, 'matches/{}.pkl'.format(m['match_id']))
-
-# matches = sorted(matches, key=lambda x: x['date'])
-
-# print('Loaded', len(matches), 'Matches')
 
 ts = TrueSkillTracker()
 
@@ -64,14 +35,9 @@ for match in db.get_matches(season=0):
 
 class Matches(Resource):
   def get(self):
-    # ret_matches = copy.deepcopy(db.get_matches(season=0))
     ret_matches = db.get_matches(season=0)
 
     for match in ret_matches:
-      # match['team1table'].index = match['team1table']['player_link'].apply(lambda x: x.split('/')[-1])
-      # match['team2table'].index = match['team2table']['player_link'].apply(lambda x: x.split('/')[-1])
-      # match['team1table'] = match['team1table'].to_dict(orient='index')
-      # match['team2table'] = match['team2table'].to_dict(orient='index')
       match['date'] = match['date'].isoformat()
 
     return ret_matches
@@ -112,13 +78,17 @@ class SubmitMatch(Resource):
     if match_id in ts.match_ids:
       return "Match already processed", 400
 
-    match_url = 'https://popflash.site/match/' + match_id
+    # match_url = 'https://popflash.site/match/' + match_id
 
-    match = pf.get_match(match_url)
-    matches.append(match)
+    # match = pf.get_match(match_url)
+    # matches.append(match)
     
-    open('submitted_matches.txt', 'a').write(match_id + '\n')
-    mlc.save(match, 'matches/{}.pkl'.format(match_id))
+    # open('submitted_matches.txt', 'a').write(match_id + '\n')
+    # mlc.save(match, 'matches/{}.pkl'.format(match_id))
+    try:
+      db.add_match(match_id)
+    except match_db.MatchAlreadyAdded:
+      return "Match already processed", 400
 
     skills_before = ts.skills.copy()
 
