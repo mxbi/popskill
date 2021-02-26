@@ -1,3 +1,4 @@
+*.bak
 *.service
 matches/
 submitted_matches.txt
