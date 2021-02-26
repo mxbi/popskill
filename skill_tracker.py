@@ -34,6 +34,7 @@ class TrueSkillTracker:
     self.player_rounds_played = defaultdict(int)
     self.player_rounds_won = defaultdict(int)
     self.player_hltv_history = defaultdict(list)
+    self.player_adr_history = defaultdict(list)
     #print(f'RATING mu={mu} sigma={sigma} beta={beta}, tau={tau}, hltv={hltv}, mode=GAME')
 
   def process_match(self, match):
@@ -89,6 +90,14 @@ class TrueSkillTracker:
 
     if trace:
       print('Generated round sequence:', rounds)
+
+    # Keep track of HLTVs
+    table = {**t1table, **t2table}
+    for p in t1players + t2players:
+        hltv = table[p.id]['HLTV']
+        adr = table[p.id]['ADR']
+        self.player_hltv_history[p].append(hltv)
+        self.player_adr_history[p].append(adr)
     
     for i, r in enumerate(rounds):
       if trace:
@@ -99,10 +108,6 @@ class TrueSkillTracker:
 
       t1weights = np.array([p['HLTV'] for p in t1table.values()])
       t2weights = np.array([p['HLTV'] for p in t2table.values()])
-
-      # Keep track of HLTVs
-      for (p, hltv) in zip(t1players + t2players, t1weights.tolist() + t2weights.tolist()):
-        self.player_hltv_history[p].append(hltv)
       
       #### Calculating ratings (weighted by HLTV)
 

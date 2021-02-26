@@ -85,8 +85,8 @@ async def register(ctx, match):
     async with aiohttp.ClientSession() as session:
         async with session.post(SERVER+'/submit_match', json={'match_url': match}) as resp:
             if resp.status != 200:
-                logging.warning(resp.text)
-                return await ctx.send('Failed to process match:' + resp.text[:1000])
+                logging.warning(await resp.text())
+                return await ctx.send('Failed to process match: ' + (await resp.text())[:1000])
             resp = await resp.json()
 
     print(resp)

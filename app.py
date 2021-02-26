@@ -67,6 +67,7 @@ class PlayerRankings(Resource):
       
       user_rwp = (ts[season].player_rounds_won[user] / ts[season].player_rounds_played[user])
       user_hltv = np.mean(ts[season].player_hltv_history[user])
+      user_adr = np.mean(ts[season].player_adr_history[user])
 
       ret.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts[season].player_counts[user], 'user_id': user.id, 
                   'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history, 'rwp': user_rwp, 'hltv': user_hltv})
@@ -82,15 +83,11 @@ class SubmitMatch(Resource):
     if not match_id.isnumeric():
       return "Bad popflash match url provided", 400
 
-    # if match_id in ts.match_ids:
-    #   return "Match already processed", 400
-
     try:
-      match = db.add_match(match_id, ignore_existing=True)
+      match = db.add_match(match_id)
     except match_db.MatchAlreadyAdded:
       return "Match already processed", 400
 
-    
     match_season = None
     for s, (start, end) in seasons.items():
       if start < match['date'].replace(tzinfo=None) < end:
