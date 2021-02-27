@@ -3,12 +3,13 @@ import mlcrate as mlc
 import dateparser
 from collections import defaultdict
 import numpy as np
-from itertools import groupby
+from itertools import groupby, combinations
 import os
 import discord
 import asyncio
 from threading import Thread
 import copy
+import time
 from datetime import datetime, date
 
 from flask import Flask, jsonify, request
@@ -38,7 +39,8 @@ ts = {}
 for season in seasons.keys():
     ts[season] = TrueSkillTracker(username_tracker=username_tracker)
 
-    for match in db.get_matches(season=season):
+    matches = db.get_matches(season=season)
+    for match in matches:
         ts[season].process_match(match)
 
 ################ WEB API
@@ -101,6 +103,35 @@ def get_match(match_id: int):
         return db.get_match(match_id)
     except match_db.MatchDoesNotExist:
         return "Match does not exist (or is not in cache)", 200
+
+@app.route('/v2/balance', methods=['POST'])
+def balance(season: int=default_season):
+    # print(request.json['match1'])
+    users = [x.split('/')[-1] for x in request.json['team1'] + request.json['team2'] if x]
+    print(users)
+    users = [username_tracker[_id] for _id in users]
+    print(users)
+
+    srs = [(u, ts[season].skills[u].mu) for u in users]
+    best_comb_diff = 99999999999
+    best_comb = None
+    best_comb_rating = None
+    for team1 in combinations(srs, len(srs)//2):
+        team2 = [u for u in srs if u not in team1]
+        team1sr = sum([u[1] for u in team1])
+        team2sr = sum([u[1] for u in team2])
+        if abs(team1sr - team2sr) < best_comb_diff:
+            best_comb_diff = abs(team1sr - team2sr)
+            best_comb = (team1, team2)
+            best_comb_rating = (team1sr, team2sr)
+    
+    team1 = "\n".join(f'{u[0].name} ({int(u[1])})' for u in best_comb[0])
+    team2 = "\n".join(f'{u[0].name} ({int(u[1])})' for u in best_comb[1])
+
+    resp = {"team1": team1, "team2": team2, "diff": best_comb_diff, "t1rating": int(best_comb_rating[0]), "t2rating": int(best_comb_rating[1])}
+    resp['print'] = f"SUGGESTED TEAM 1:\n{resp['team1']}\n\nSUGGESTED TEAM 2:\n{resp['team2']}\n\nELO DIFF: f{resp['diff']}"
+    print(resp)
+    return resp, 200
 
 ############ COMPAT
 @app.route('/matches')
@@ -212,5 +243,5 @@ app.json_encoder = JSONEncoder
 # print(ronan)
 
 if __name__ == '__main__':
-        app.run(debug=True, port=7355)
+        app.run(debug=False, port=7355)
         
