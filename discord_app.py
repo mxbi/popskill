@@ -30,7 +30,7 @@ if len(sys.argv)>1 and sys.argv[1] == 'testing':
 else:
     SERVER = "https://api.sandb.ga"
 
-client = commands.Bot('!')
+client = commands.Bot(commands.when_mentioned_or('!'))
 
 class DBHandler:
     def __init__(self):
@@ -80,6 +80,7 @@ async def on_message(message: discord.Message):
 
 @client.command()
 async def register(ctx, match):
+    "Add a match to the database and show the resulting Elo changes."
     logging.info(ctx.message.content)
 
     async with aiohttp.ClientSession() as session:
@@ -103,6 +104,7 @@ async def register(ctx, match):
 
 @client.command()
 async def stats(ctx, match):
+    "Show the popflash statistics for a match."
     logging.info(ctx.message.content)
 
     def screenshot():
@@ -118,6 +120,7 @@ async def stats(ctx, match):
 
 @client.command()
 async def pop(ctx, match):
+    "Equivalent to !register + !stats"
     asyncio.ensure_future(ctx.invoke(register, match))
     asyncio.ensure_future(ctx.invoke(stats, match))
 
