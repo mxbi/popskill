@@ -32,6 +32,8 @@ class TrueSkillTracker:
     self.hltv = 0.75
     self.user_names = username_tracker
 
+    self.user_last_diffs = {}
+
     self.player_rounds_played = defaultdict(int)
     self.player_rounds_won = defaultdict(int)
     self.player_hltv_history = defaultdict(list)
@@ -141,10 +143,12 @@ class TrueSkillTracker:
         print('team1:', {p: round(newt1skills[i].mu - self.skills[p].mu, 2) for i, p in enumerate(t1players)})
         print('team2:', {p: round(newt2skills[i].mu - self.skills[p].mu, 2) for i, p in enumerate(t2players)})
 
-      for p, n in zip(t1players, newt1skills):
+      for p, n, old in zip(t1players, newt1skills, t1skills):
         self.skills[p] = n
-      for p, n in zip(t2players, newt2skills):
+        self.user_last_diffs[p] = n.mu - old.mu
+      for p, n, old in zip(t2players, newt2skills, t2skills):
         self.skills[p] = n
+        self.user_last_diffs[p] = n.mu - old.mu
 
     self.skill_history.append(self.skills.copy())
 

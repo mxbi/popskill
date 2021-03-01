@@ -27,7 +27,7 @@ CORS(app)
 
 seasons = {0: (datetime(2020, 1, 1, 0, 0, 0), datetime(2021, 3, 1, 0, 0, 0)),
            1: (datetime(2021, 3, 1, 0, 0, 0), datetime(2021, 5, 1, 0, 0, 0))}
-default_season = 0
+default_season = 1
 
 # Launch database
 db = MatchDB(seasons)
@@ -56,7 +56,8 @@ def get_leaderboard(season: int=default_season):
         if ts[season].player_counts[user] < ts[season].min_ranked_matches: 
             continue
 
-        user_last_diff = ts[season].skill_history[-1][user].mu - ts[season].skill_history[-2][user].mu 
+        # user_last_diff = ts[season].skill_history[-1][user].mu - ts[season].skill_history[-2][user].mu
+        user_last_diff = ts[season].user_last_diffs[user]
         
         user_rwp = (ts[season].player_rounds_won[user] / ts[season].player_rounds_played[user])
         user_hltv = np.mean(ts[season].player_hltv_history[user])
@@ -149,14 +150,14 @@ def balance(season: int=default_season):
 ############ COMPAT
 @app.route('/matches')
 def get_matches_v1():
-    return jsonify(db.get_matches(season=0))
+    return jsonify(db.get_matches(season=default_season))
 
 @app.route('/rankings')
 def get_rankings_v1():
     season = 0
     ret = []
 
-    matches = db.get_matches(season=season)
+    matches = db.get_matches(season=default_season)
 
     for user, skill in ts[season].skills.items():
         if ts[season].player_counts[user] < ts[season].min_ranked_matches: 
