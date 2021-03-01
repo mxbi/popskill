@@ -85,6 +85,19 @@ def get_user(user_id: int, season: int=None):
         season_matches[m['season']].append(m)
         max_season = max(max_season, m['season'])
 
+    user = username_tracker[str(user_id)]
+    # DEPRECATED
+    _seasons = [season] if season else seasons.keys()
+    user_skill_histories = defaultdict(int)
+    for s in _seasons:
+        matches = db.get_matches(season=s)
+
+
+        user_skill_history = [{'SR': h[user].mu, 'date': '' if i==0 else matches[i-1]['date'].isoformat(), 'match_id': 0 if i==0 else matches[i-1]['match_id']} for i,h in enumerate(ts[s].skill_history)]
+        user_skill_history = [list(g)[0] for k,g in groupby(user_skill_history, lambda x: x['SR'])]
+        user_skill_histories[s] = user_skill_history
+    # /DEPRECATED
+
     # We want empty seasons instead of missing seasons where the user has never played
     if season:
         season_matches[season]
@@ -93,8 +106,8 @@ def get_user(user_id: int, season: int=None):
             season_matches[season]
     
     # We do a bit of a dance to get the user's username
-    username = username_tracker[str(user_id)].name
-    resp = {"user_id": user_id, 'seasons': season_matches, 'username': username}
+    username = user.name
+    resp = {"user_id": user_id, 'seasons': season_matches, 'username': username, "user_skill_history": user_skill_histories}
     return resp
 
 @app.route('/v2/match/<int:match_id>', methods=['GET'])
