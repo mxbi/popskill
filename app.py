@@ -36,9 +36,10 @@ db.build_cache()
 username_tracker = {}
 
 ts = {}
-for season in seasons.keys():
-    ts[season] = TrueSkillTracker(username_tracker=username_tracker)
+ts[0] = TrueSkillTracker(username_tracker=username_tracker)
+ts[1] = TrueSkillTracker(username_tracker=username_tracker, min_ranked_matches=1)
 
+for season in seasons.keys():
     matches = db.get_matches(season=season)
     for match in matches:
         ts[season].process_match(match)
