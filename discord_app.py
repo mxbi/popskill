@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 import logging  # receives logs from discord.py
 from datetime import datetime
+from steam import steamid
 
 logging.basicConfig(level=logging.INFO)
 
@@ -64,7 +65,7 @@ async def on_message(message: discord.Message):
         'discord_name': str(message.author),
         'discord_id': message.author.id,
         'popflash_id': popflash_id,
-        'steam': profile['steam'],
+        'steam_id': steamid.steam64_from_url(profile["steam_profile"]),
         'register_date': datetime.now(),
         'v': profile['v'],
     }
