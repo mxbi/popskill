@@ -65,7 +65,7 @@ async def on_message(message: discord.Message):
         'discord_name': str(message.author),
         'discord_id': message.author.id,
         'popflash_id': popflash_id,
-        'steam_id': steamid.steam64_from_url(profile["steam_profile"]),
+        'steam_id': int(steamid.steam64_from_url(profile["steam_profile"])),
         'register_date': datetime.now(),
         'v': profile['v'],
     }
