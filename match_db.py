@@ -31,6 +31,8 @@ class MatchDB():
         self.match_cache = self.db['match_cache_v' + str(self.API_VERSION)]
         self.match_cache.create_index("match_id", unique=True)
 
+        self.users = self.db['user_links']
+
         self.seasons = seasons
 
 
@@ -143,3 +145,8 @@ class MatchDB():
 
         # print(matches)
         return matches
+
+    def get_optout_players(self):
+        players = self.users.find({"optout": True})
+        return [p['popflash_id'] for p in players]
+        

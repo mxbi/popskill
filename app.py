@@ -52,9 +52,14 @@ def get_leaderboard(season: int=default_season):
     if season not in seasons:
         return "Response", 400
 
+    optout = db.get_optout_players()
+
     rankings = []
     for user, skill in ts[season].skills.items():
         if ts[season].player_counts[user] < ts[season].min_ranked_matches: 
+            continue
+        
+        if int(user.id) in optout:
             continue
 
         # user_last_diff = ts[season].skill_history[-1][user].mu - ts[season].skill_history[-2][user].mu
@@ -195,6 +200,8 @@ def post_submit_match_v1():
 
     skills_before = ts[match_season].skills.copy()
 
+    optout = db.get_optout_players()
+
     # Will do nothing if match has already been processed
     ts[match_season].process_match(match)
 
@@ -212,7 +219,10 @@ def post_submit_match_v1():
         oldskill = skills_before[player].mu
         newskill = ts[match_season].skills[player].mu
         diff = newskill - oldskill
-        t1stats.append('{} - {} **({}{})**'.format(player.name, int(newskill), '+' if diff>0 else '', int(diff)))
+        if int(player.id) in optout:
+            t1stats.append('{}'.format(player.name))
+        else:
+            t1stats.append('{} - {} **({}{})**'.format(player.name, int(newskill), '+' if diff>0 else '', int(diff)))
 
     t2stats = []
     for row in match['team2table'].values():
@@ -220,7 +230,10 @@ def post_submit_match_v1():
         oldskill = skills_before[player].mu
         newskill = ts[match_season].skills[player].mu
         diff = newskill - oldskill
-        t2stats.append('{} - {} **({}{})**'.format(player.name, int(newskill), '+' if diff>0 else '', int(diff)))
+        if int(player.id) in optout:
+            t2stats.append('{}'.format(player.name))
+        else:
+            t2stats.append('{} - {} **({}{})**'.format(player.name, int(newskill), '+' if diff>0 else '', int(diff)))
 
     resp['team1stats'] = '\n'.join(t1stats)
     resp['team2stats'] = '\n'.join(t2stats)
