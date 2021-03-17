@@ -10,7 +10,6 @@ logging.basicConfig(level=logging.INFO)
 import aiohttp  # for querying api
 
 import io
-import popflash_match_screenshot
 
 # for adding users to database
 from motor.motor_asyncio import AsyncIOMotorClient as MongoClient
@@ -108,16 +107,22 @@ async def stats(ctx, match):
     "Show the popflash statistics for a match."
     logging.info(ctx.message.content)
 
-    def screenshot():
-        pms = popflash_match_screenshot.PopflashScreenshotter()
-        img = pms.screenshot(match.split('/')[-1])
-        pms.close()
-        return discord.File(io.BytesIO(img), 'match_stats.png')
+    match_url = "https://popflash.site/match/" + match.split('/')[-1]
 
-    async with ctx.typing():
-        file = await asyncio.get_event_loop().run_in_executor(None, screenshot)
+    image_command = ["wkhtmltoimage",
+                     "-f", "png",
+                     "--crop-h", "1106",
+                     "--crop-w", "990",
+                     "--crop-x", "0",
+                     "--crop-y", "142",
+                     "--cookie", "connect.sid", os.getenv('POPFLASH_SID'),
+                     match_url, "-"]
 
-    await ctx.send(file=file)
+    process = await asyncio.create_subprocess_exec(*image_command,
+                                                   stdout=asyncio.subprocess.PIPE)
+    stdout, stderr = await process.communicate()
+    print(stdout)
+    await ctx.send(file=discord.File(io.BytesIO(stdout), 'match_stats.png'))
 
 @client.command()
 async def pop(ctx, match):

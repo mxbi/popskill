@@ -1,0 +1,17 @@
+requests==2.25.1
+aiohttp==3.7.4.post0
+beautifulsoup4==4.9.3
+dateparser==1.0.0
+discord==1.0.1
+Flask==1.1.2
+flask_cors==3.0.10
+flask_restful==0.3.8
+imgkit==1.0.5
+mlcrate==0.2.0
+motor==2.3.1
+numpy==1.20.1
+pandas==1.2.3
+pymongo==3.11.3
+python-dotenv==0.15.0
+steam==1.2.0
+trueskill==0.4.5
