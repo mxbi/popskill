@@ -122,17 +122,21 @@ def balance(season: int=default_season):
     users = [username_tracker[_id] for _id in users]
     print(users)
 
-    playerset = {(u, ts[season].skills[u]) for u in users}
+    players = [(u, ts[season].skills[u]) for u in users]
+
+    def team2(team1):
+        return (u for u in players if u not in team1)
 
     def drawprob(team1):
-        team1,team2 = ((sr for u,sr in t) for t in (team1, playerset.difference(team1)))
-        return ts[season].ts.quality([team1, team2])
+        return ts[season].ts.quality(
+            [(sr for u,sr in t) for t in (team1, team2(team1))]
+        )
 
     best_team1 = max(
-        combinations(playerset, len(playerset) // 2),
+        combinations(players, len(players) // 2),
         key=drawprob
     )
-    best_team2 = playerset.difference(best_team1)
+    best_team2 = team2(best_team1)
 
     resp = {
         "team1": '\n'.join(f"{u.name} ({int(sr.mu)})" for u,sr in best_team1),
