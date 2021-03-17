@@ -132,23 +132,21 @@ def balance(season: int=default_season):
     users = [username_tracker[_id] for _id in users]
     print(users)
 
-    srs = [(u, ts[season].skills[u].mu) for u in users]
-    best_comb_diff = 99999999999
-    best_comb = None
-    best_comb_rating = None
-    for team1 in combinations(srs, len(srs)//2):
-        team2 = [u for u in srs if u not in team1]
-        team1sr = sum([u[1] for u in team1])
-        team2sr = sum([u[1] for u in team2])
-        if abs(team1sr - team2sr) < best_comb_diff:
-            best_comb_diff = abs(team1sr - team2sr)
-            best_comb = (team1, team2)
-            best_comb_rating = (team1sr, team2sr)
-    
-    team1 = "\n".join(f'{u[0].name} ({int(u[1])})' for u in best_comb[0])
-    team2 = "\n".join(f'{u[0].name} ({int(u[1])})' for u in best_comb[1])
+    playerset = {(u, ts[season].skills[u].mu) for u in users}
 
-    resp = {"team1": team1, "team2": team2, "diff": best_comb_diff, "t1rating": int(best_comb_rating[0]), "t2rating": int(best_comb_rating[1])}
+    best_team1 = max(
+        combinations(playerset, len(playerset) // 2),
+        key=lambda team1: ts[season].ts.quality([team1, playerset.difference(team1)])
+    )
+    best_team2 = playerset.difference(best_team1)
+
+    resp = {
+        "team1": '\n'.join(f"{u.name} ({int(sr)})" for u,sr in best_team1),
+        "team2": '\n'.join(f'{u.name} ({int(sr)})' for u,sr in best_team2),
+        "t1rating": sum(sr for u,sr in best_team1),
+        "t2rating": sum(sr for u,sr in best_team2),
+    }
+    resp['diff'] = resp['t2rating'] - resp['t1rating']
     resp['print'] = f"SUGGESTED TEAM 1:\n{resp['team1']}\n\nSUGGESTED TEAM 2:\n{resp['team2']}\n\nELO DIFF: f{resp['diff']}"
     print(resp)
     return resp, 200
