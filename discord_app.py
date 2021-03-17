@@ -121,7 +121,7 @@ async def stats(ctx, match):
     process = await asyncio.create_subprocess_exec(*image_command,
                                                    stdout=asyncio.subprocess.PIPE)
     stdout, stderr = await process.communicate()
-    print(stdout)
+    print(stderr)
     await ctx.send(file=discord.File(io.BytesIO(stdout), 'match_stats.png'))
 
 @client.command()
