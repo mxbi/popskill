@@ -1,27 +1,15 @@
-from operator import itemgetter
-
-import popflash_api as pf
-import mlcrate as mlc
-import dateparser
 from collections import defaultdict
-import numpy as np
-from itertools import groupby, combinations
-import os
-import discord
-import asyncio
-from threading import Thread
-import copy
-import time
 from datetime import datetime, date
+from itertools import groupby, combinations
 
-from flask import Flask, jsonify, request
 import flask
-from flask_restful import Resource, Api, reqparse
+import numpy as np
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from skill_tracker import TrueSkillTracker, Player
-from match_db import MatchDB
 import match_db
+from match_db import MatchDB
+from skill_tracker import TrueSkillTracker, Player
 
 app = Flask(__name__)
 CORS(app)
