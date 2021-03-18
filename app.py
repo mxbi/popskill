@@ -125,7 +125,7 @@ def balance(season: int=default_season):
     players = [(u, ts[season].skills[u]) for u in users]
 
     def team2(team1):
-        return (u for u in players if u not in team1)
+        return [u for u in players if u not in team1]
 
     def drawprob(team1):
         return ts[season].ts.quality(
