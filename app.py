@@ -133,7 +133,7 @@ def balance(season: int=default_season):
         )
 
     best_team1 = max(
-        combinations(players, len(players) // 2),
+        combinations(players[:-1], len(players) // 2),
         key=drawprob
     )
     best_team2 = team2(best_team1)
