@@ -129,7 +129,7 @@ def balance(season: int=default_season):
 
     def drawprob(team1):
         return ts[season].ts.quality(
-            [(sr for u,sr in t) for t in (team1, team2(team1))]
+            [[sr for u,sr in t] for t in (team1, team2(team1))]
         )
 
     best_team1 = max(
