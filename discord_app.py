@@ -111,6 +111,8 @@ async def stats(ctx, match):
 
     image_command = ["wkhtmltoimage",
                      "-f", "png",
+                     "--width", "990",
+                     "--disable-smart-width",
                      "--crop-h", "1106",
                      "--crop-w", "990",
                      "--crop-x", "0",
@@ -121,7 +123,6 @@ async def stats(ctx, match):
     process = await asyncio.create_subprocess_exec(*image_command,
                                                    stdout=asyncio.subprocess.PIPE)
     stdout, stderr = await process.communicate()
-    print(stderr)
     await ctx.send(file=discord.File(io.BytesIO(stdout), 'match_stats.png'))
 
 @client.command()
