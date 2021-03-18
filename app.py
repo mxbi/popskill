@@ -143,7 +143,7 @@ def balance(season: int=default_season):
         "team2": '\n'.join(f'{u.name} ({int(sr.mu)})' for u,sr in best_team2),
         "t1rating": int(sum(sr.mu for u,sr in best_team1)),
         "t2rating": int(sum(sr.mu for u,sr in best_team2)),
-        "drawprob": drawprob(team1),
+        "drawprob": drawprob(best_team1),
     }
     resp['diff'] = abs(resp['t2rating'] - resp['t1rating'])
     resp['print'] = "SUGGESTED TEAM 1:\n{team1}\n\nSUGGESTED TEAM 2:\n{team2}\n\nELO DIFF: f{diff}".format(**resp)
