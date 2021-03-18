@@ -111,6 +111,8 @@ async def stats(ctx, match):
 
     image_command = ["wkhtmltoimage",
                      "-f", "png",
+                     "--width", "990",
+                     "--disable-smart-width",
                      "--crop-h", "1106",
                      "--crop-w", "990",
                      "--crop-x", "0",
