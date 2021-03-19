@@ -149,22 +149,20 @@ async def balance(ctx, chan: Optional[discord.VoiceChannel] = None, *players: di
     if chan:
         players = [u for u in chan.members if u not in players]
 
-    users = await db.users.find(
-        {'discord_id': {'$in': [p.id for p in players]}},
-        projection=['discord_id', 'popflash_id']
-    ).to_list(None)
-
-    users = {
-        u['discord_id']: u['popflash_id'] for u in await db.users.find(
+    users = [
+        u['popflash_id'] for u in await db.users.find(
             {'discord_id': {'$in': [p.id for p in players]}},
             projection=['discord_id', 'popflash_id']
         ).to_list(None)
-    }
+    ]
+
+    if len(users) < len(players):
+        asyncio.ensure_future(ctx.send("Some players don't have popflash."))
 
     async with aiohttp.ClientSession() as session:
         async with session.post(
                     SERVER+'/v2/balance',
-                    json={'team1': [str(users[p.id]) for p in players], 'team2':[]}
+                    json={'team1': [str(u) for u in users], 'team2':[]}
                 ) as resp:
             data = await resp.json()
 
