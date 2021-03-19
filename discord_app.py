@@ -131,4 +131,36 @@ async def pop(ctx, match):
     asyncio.ensure_future(ctx.invoke(register, match))
     asyncio.ensure_future(ctx.invoke(stats, match))
 
+@client.command()
+async def balance(ctx, chan: Optional[discord.VoiceChannel] = None, *players: discord.User):
+    if chan:
+        players = [u for u in chan.members if u not in players]
+
+    users = await db.users.find(
+        {'discord_id': {'$in': [p.id for p in players]}},
+        projection=['discord_id', 'popflash_id']
+    ).to_list(None)
+
+    users = {
+        u['discord_id']: u['popflash_id'] for u in await db.users.find(
+            {'discord_id': {'$in': [p.id for p in players]}},
+            projection=['discord_id', 'popflash_id']
+        ).to_list(None)
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+                    SERVER+'/v2/balance',
+                    json={'team1': [str(users[p.id]) for p in players], 'team2':[]}
+                ) as resp:
+            data = await resp.json()
+
+    emb = discord.Embed()
+    emb.add_field(name=f"Team 1 ({data['t1rating']})", value=data['team1'])
+    emb.add_field(name=f"Team 2 ({data['t2rating']})", value=data['team2'])
+
+    await ctx.send(embed=emb)
+
+
+
 client.run(os.getenv("DISCORD_TOKEN"))
