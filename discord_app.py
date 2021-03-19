@@ -35,6 +35,16 @@ else:
 
 client = commands.Bot(commands.when_mentioned_or('!'))
 
+@client.event
+async def on_command_error(ctx, error):
+    emb = discord.Embed(
+        colour=discord.Colour.red(),
+        title=type(error),
+        description=getattr(error, 'original', error)
+    )
+
+    await ctx.send(embed=emb)
+
 class DBHandler:
     def __init__(self):
         self.client = MongoClient(os.getenv("MONGO_URI"))
