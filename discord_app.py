@@ -39,8 +39,8 @@ client = commands.Bot(commands.when_mentioned_or('!'))
 async def on_command_error(ctx, error):
     emb = discord.Embed(
         colour=discord.Colour.red(),
-        title=type(error),
-        description=getattr(error, 'original', error)
+        title=str(type(error)),
+        description=str(getattr(error, 'original', error))
     )
 
     await ctx.send(embed=emb)
