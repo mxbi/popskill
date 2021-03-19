@@ -1,8 +1,11 @@
 import asyncio  # util functions
+from typing import Optional
+
 import discord
 from discord.ext import commands
 import logging  # receives logs from discord.py
 from datetime import datetime
+
 from steam import steamid
 
 logging.basicConfig(level=logging.INFO)
