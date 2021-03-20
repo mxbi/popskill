@@ -33,13 +33,16 @@ if len(sys.argv)>1 and sys.argv[1] == 'testing':
 else:
     SERVER = "https://api.sandb.ga"
 
-client = commands.Bot(commands.when_mentioned_or('!'))
+client = commands.Bot(commands.when_mentioned_or('!'), help_command=None)
 
 @client.event
 async def on_command_error(ctx, error):
+    if isinstance(error, discord.ext.commands.CommandNotFound):
+        return
+
     emb = discord.Embed(
         colour=discord.Colour.red(),
-        title=str(type(error)),
+        title=type(error).__name__,
         description=str(getattr(error, 'original', error))
     )
 
@@ -69,19 +72,18 @@ async def on_message(message: discord.Message):
     if not popflash_id.isnumeric():
         return await message.channel.send("It didn't look like you sent a popflash user link. Send a message of the form 'https://popflash.site/user/1610522'")
 
-    profile = await asyncio.get_event_loop().run_in_executor(
-        None, lambda: pf.get_profile(popflash_id)
-    )
+    def to_user():
+        profile = pf.get_profile(popflash_id)
+        return {
+            'discord_name': str(message.author),
+            'discord_id': message.author.id,
+            'popflash_id': popflash_id,
+            'steam_id': int(steamid.steam64_from_url(profile["steam_profile"])),
+            'register_date': datetime.now(),
+            'v': profile['v'],
+        }
 
-    user = {
-        'discord_name': str(message.author),
-        'discord_id': message.author.id,
-        'popflash_id': popflash_id,
-        'steam_id': int(steamid.steam64_from_url(profile["steam_profile"])),
-        'register_date': datetime.now(),
-        'v': profile['v'],
-    }
-
+    user = await asyncio.get_event_loop().run_in_executor(None, to_user)
     logging.info(str(user))
 
     try:
@@ -172,6 +174,5 @@ async def balance(ctx, chan: Optional[discord.VoiceChannel] = None, *players: di
 
     await ctx.send(embed=emb)
 
-
-
-client.run(os.getenv("DISCORD_TOKEN"))
+if __name__ == '__main__':
+    client.run(os.getenv("DISCORD_TOKEN"))
