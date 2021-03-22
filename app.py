@@ -172,11 +172,12 @@ def get_rankings_v1():
         user_last_diff = user_skill_history[-1]['SR'] - user_skill_history[-2]['SR']
         
         user_rwp = (ts[season].player_rounds_won[user] / ts[season].player_rounds_played[user])
+        user_mwp = (ts[season].player_matches_won[user] / ts[season].player_matches_played[user])
         user_hltv = np.mean(ts[season].player_hltv_history[user])
         user_adr = np.mean(ts[season].player_adr_history[user])
 
         ret.append({'username': user.name, 'SR': int(skill.mu), 'SRvar': int(skill.sigma), 'matches_played': ts[season].player_counts[user], 'user_id': user.id, 
-                                'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history, 'rwp': user_rwp, 'hltv': user_hltv, 'adr': user_adr})
+                                'last_diff': int(user_last_diff), 'user_skill_history': user_skill_history, 'rwp': user_rwp, 'mwp': user_mwp, 'hltv': user_hltv, 'adr': user_adr})
     return jsonify(ret) # list must be jsonifyed manually :(
 
 @app.route('/submit_match', methods=['POST'])

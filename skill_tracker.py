@@ -36,6 +36,8 @@ class TrueSkillTracker:
 
     self.player_rounds_played = defaultdict(int)
     self.player_rounds_won = defaultdict(int)
+    self.player_matches_played = defaultdict(int)
+    self.player_matches_won = defaultdict(int)
     self.player_hltv_history = defaultdict(list)
     self.player_adr_history = defaultdict(list)
     #print(f'RATING mu={mu} sigma={sigma} beta={beta}, tau={tau}, hltv={hltv}, mode=GAME')
@@ -67,10 +69,17 @@ class TrueSkillTracker:
       self.player_counts[p] += 1
       self.player_rounds_played[p] += match['team1score'] + match['team2score']
       self.player_rounds_won[p] += match['team1score']
+      self.player_matches_played[p] += 1
+      if match['team1score'] > match['team2score']:
+        self.player_matches_won[p] += 1
+        
     for p in t2players:
       self.player_counts[p] += 1
       self.player_rounds_played[p] += match['team1score'] + match['team2score']
       self.player_rounds_won[p] += match['team2score']
+      self.player_matches_played[p] += 1
+      if match['team2score'] > match['team1score']:
+        self.player_matches_won[p] += 1
 
     # Calculate number of wins each team got
     if self.mode == 'match':
