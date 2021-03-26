@@ -168,7 +168,7 @@ async def balance(ctx, chan: Optional[discord.VoiceChannel] = None, *players: di
                 ) as resp:
             data = await resp.json()
 
-    emb = discord.Embed()
+    emb = discord.Embed(colour=0xe3c28f)
     emb.add_field(name=f"Team 1 ({data['t1rating']})", value=data['team1'])
     emb.add_field(name=f"Team 2 ({data['t2rating']})", value=data['team2'])
 
